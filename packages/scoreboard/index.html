@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alexandria Scoreboard</title>
+<link rel="stylesheet" href="board.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="emblem"></span><span class="brand-name">ALEXANDRIA</span><span class="brand-sub">SCOREBOARD</span></div>
+  <div class="mode" role="tablist" aria-label="Data source">
+    <button id="modeLive" class="mode-btn" role="tab" aria-selected="true" data-mode="live">LIVE</button>
+    <button id="modeDemoA" class="mode-btn" role="tab" aria-selected="false" data-mode="demo:synthetic-multi-agent">DEMO A</button>
+    <button id="modeDemoB" class="mode-btn" role="tab" aria-selected="false" data-mode="demo:forge-demo-session">DEMO B</button>
+    <span id="demoTransport" class="transport" hidden>
+      <button id="demoPlay" title="play / pause (space)">⏸</button>
+      <button id="demoRestart" title="restart">↺</button>
+      <select id="demoSpeed" aria-label="replay speed"><option value="1">1×</option><option value="10" selected>10×</option><option value="30">30×</option><option value="100">100×</option></select>
+      <span id="demoPos" class="mono"></span>
+    </span>
+  </div>
+  <div class="controls">
+    <span id="signal" class="signal" data-state="connecting"><i></i><b>CONNECTING</b></span>
+    <button id="soundEnable" class="chip" title="Browsers need one click before sound can play">🔈 enable sound</button>
+    <button id="mute" class="chip" aria-pressed="false" title="Mute alert sounds">🔔</button>
+    <input id="volume" type="range" min="0" max="1" step="0.05" value="0.6" aria-label="alert volume" title="Alert volume">
+    <button id="testHorn" class="chip" title="Play the horn once to check volume">test</button>
+    <button id="benchToggle" class="chip" aria-expanded="true">BENCH ▾</button>
+  </div>
+</header>
+
+<main>
+  <div id="demoRibbonWrap" class="ribbon-wrap" hidden><div class="ribbon">DEMO · SYNTHETIC DATA</div></div>
+  <section id="board" class="board" aria-live="off">
+    <div class="plate"><span>ALEXANDRIA LTD</span><span id="plateProject" class="plate-project"></span></div>
+    <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+
+    <div class="row row-top">
+      <div class="block home">
+        <div class="label">HOME</div>
+        <div class="window"><div id="dHome" class="big"></div></div>
+        <div class="sub"><span id="homeNote">DONE · TOOL CALLS</span></div>
+        <div class="arrow-wrap"><span id="arrowHome" class="arrow left" title="main thread active"></span><span class="arrow-label">MAIN</span></div>
+      </div>
+      <div class="block clock">
+        <div class="label">GAME CLOCK</div>
+        <div class="window amber"><div id="dClock" class="big"></div></div>
+        <div class="lamps">
+          <span id="lampHrs" class="lamp amber"><i></i>HRS</span>
+          <span id="lampRun" class="lamp green"><i></i>RUNNING</span>
+          <span id="lampWait" class="lamp red"><i></i>TIMEOUT</span>
+          <span id="lampIdle" class="lamp amber"><i></i>IDLE</span>
+        </div>
+        <div class="sub"><span id="clockNote">WORK TIME · WAITS EXCLUDED</span></div>
+      </div>
+      <div class="block guest">
+        <div class="label">GUEST</div>
+        <div class="window"><div id="dGuest" class="big"></div></div>
+        <div class="sub"><span id="guestNote">REMAINING · SCOPE UNKNOWN</span></div>
+        <div class="arrow-wrap right"><span class="arrow-label">AGENTS</span><span id="arrowGuest" class="arrow right" title="subagent active"></span></div>
+      </div>
+    </div>
+
+    <div class="row row-mid">
+      <div class="mini">
+        <div class="label">FOULS</div>
+        <div class="window amber"><div id="dFouls" class="small"></div></div>
+        <span id="lampBonus" class="lamp red under"><i></i>BONUS</span>
+      </div>
+      <div class="mini">
+        <div class="label">VERIFIED</div>
+        <div class="window green"><div id="dVerified" class="small"></div></div>
+        <span class="lamp-row"><span id="lampPass" class="lamp green"><i></i>PASS</span><span id="lampFail" class="lamp red"><i></i>FAIL</span></span>
+      </div>
+      <div class="mini period">
+        <div class="label">PERIOD</div>
+        <div class="window amber"><div id="dPeriod" class="small"></div></div>
+        <span id="periodNote" class="tiny">TURN</span>
+      </div>
+      <div class="mini shot">
+        <div class="label">SHOT CLOCK</div>
+        <div class="window"><div id="dShot" class="small"></div></div>
+        <span id="shotNote" class="tiny">MIN LEFT · NO ESTIMATE</span>
+      </div>
+      <div class="mini">
+        <div class="label">TIMEOUTS</div>
+        <div class="window amber"><div id="dTimeouts" class="small"></div></div>
+        <span id="lampTO" class="lamp red under"><i></i>WAITING</span>
+      </div>
+      <div class="mini">
+        <div class="label">PLAYER</div>
+        <div class="window amber"><div id="dPlayer" class="small"></div></div>
+        <span id="playerNote" class="tiny">AGENTS RUNNING</span>
+      </div>
+    </div>
+
+    <div class="row row-msg">
+      <div class="window wide amber"><div id="dMessage" class="msg"></div></div>
+    </div>
+    <div id="swRow" class="sw-row" title="Stopwatch &amp; ETA v0.2: active time excludes every wait; the ETA is a calibrated range of remaining active time, or says why it has none"></div>
+    <div class="basis-row">
+      <span class="basis observed">● observed</span><span class="basis inferred">◐ inferred</span><span class="basis predicted">◇ predicted</span><span class="basis unavailable">– unavailable</span>
+      <span id="basisNote" class="basis-note"></span>
+    </div>
+  </section>
+
+  <div id="alerts" class="alerts" aria-live="polite"></div>
+
+  <section id="bench" class="bench">
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="roster" aria-selected="true">ROSTER</button>
+      <button class="tab" role="tab" data-tab="events" aria-selected="false">EVENTS</button>
+      <button class="tab" role="tab" data-tab="predictions" aria-selected="false">PREDICTIONS</button>
+      <button class="tab" role="tab" data-tab="sessions" aria-selected="false">SESSIONS</button>
+      <span id="benchStatus" class="bench-status mono"></span>
+    </nav>
+    <div id="tab-roster" class="pane" role="tabpanel"></div>
+    <div id="tab-events" class="pane" role="tabpanel" hidden></div>
+    <div id="tab-predictions" class="pane" role="tabpanel" hidden></div>
+    <div id="tab-sessions" class="pane" role="tabpanel" hidden></div>
+  </section>
+</main>
+
+<footer class="foot mono">
+  <span id="footSource"></span>
+  <span>alerts: whistle = permission · horn = task complete · buzzer = test failure / termination</span>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+{
+  "about": "Controlled evaluation for Stopwatch & ETA v0.2 (2026-11-10). Ten representative real tasks on this repository, run by subagents from clean worktrees at the same base commit. Briefs are identical across repeats. Declared estimates are the agent's genuine estimates, written before any run. Runs are never merged by the harness; their branches are evaluation artifacts.",
+  "common": "You are working in an isolated git worktree of the Alexandria Scoreboard repository (Node >= 22, no new dependencies, ES modules). Setup: if there is no node_modules folder in the worktree root, link the shared node_modules of the main checkout into it (a directory junction on Windows, a symlink elsewhere); never run npm install; never commit node_modules. Run `npm test` before you finish; all tests must pass. Commit your change on the current branch with a short message. Do NOT push, merge, edit ~/.claude, or touch files outside this worktree. Keep the change minimal and in the existing code style. End with a 3-line summary: what changed, test result (pass/fail counts), anything left undone.",
+  "tasks": [
+    {
+      "id": "T01",
+      "type": "mechanic",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 4,
+        "p90Min": 8,
+        "calls": 8
+      },
+      "brief": "Add a .gitattributes file at the repository root that normalizes line endings: `* text=auto eol=lf`, and marks *.png, *.ico, *.exe, *.zip, *.7z, *.wasm as binary. Do not renormalize or rewrite any other file. Acceptance: the file exists with those rules; `git check-attr -a packages/scoreboard/app.js` shows eol: lf; npm test passes."
+    },
+    {
+      "id": "T02",
+      "type": "refactor",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 6,
+        "p90Min": 12,
+        "calls": 12
+      },
+      "brief": "packages/scoreboard/server.js defines its own `readJsonl` helper while packages/scoreboard/src/ledger.js exports `readJsonl` with the same purpose (and it also skips a torn last line). Remove the duplicate from server.js and import the ledger's version. Behaviour must not change. Acceptance: only one readJsonl implementation remains in packages/scoreboard; npm test passes."
+    },
+    {
+      "id": "T03",
+      "type": "tests",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 7,
+        "p90Min": 14,
+        "calls": 12
+      },
+      "brief": "Add regression tests for packages/scoreboard/src/digits.js `fitNumber` and `fitClock` covering: null/undefined input, 0, negative values, values that exceed the display width, minutes rolling into hours, and more than 99 hours. Read the module first and assert its ACTUAL current behaviour (do not change digits.js). Put them in packages/scoreboard/test/digits.test.js. Acceptance: at least 8 new assertions; npm test passes."
+    },
+    {
+      "id": "T04",
+      "type": "builder",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 12,
+        "p90Min": 25,
+        "calls": 20
+      },
+      "brief": "Add `GET /api/stopwatch?session=<id>` to packages/scoreboard/server.js. It returns JSON { session, task, stopwatch, etaV2, model, rateLimit, waiting } taken from `board.snapshot(id, Date.now())` for that session; without `session` it uses `board.focusSession()`; an unknown session returns HTTP 404 with { ok:false }. Add a test in packages/scoreboard/test/ (follow the style of durability.test.js: temp dirs, port 0, transcripts:false, close the server in finally). Acceptance: endpoint works for known/unknown/focus cases in the test; npm test passes."
+    },
+    {
+      "id": "T05",
+      "type": "builder",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 12,
+        "p90Min": 25,
+        "calls": 18
+      },
+      "brief": "Add a `report` command to tools/sb-calibrate.js that prints, from `ledger.history()`, the count and the median / p75 / p90 of `actualActiveMs` in minutes grouped by `features.regime`, then by `features.model`, then by `features.type` (skip null groups, show 'n<3' instead of quantiles for groups under 3). Put the grouping/quantile logic in an exported pure function and test it in a new file packages/scoreboard/test/report.test.js with a small in-memory record list. Acceptance: `node tools/sb-calibrate.js report` runs against an empty data dir without crashing (use --data <tmpdir>); npm test passes."
+    },
+    {
+      "id": "T06",
+      "type": "research",
+      "agent": "general-purpose",
+      "declared": {
+        "p50Min": 8,
+        "p90Min": 15,
+        "calls": 12
+      },
+      "brief": "Research (docs only, no code changes) how a Claude Code status line command could forward wall-clock time, API time, model id and rate-limit usage to a local service. Use the official Claude Code docs (code.claude.com / docs.claude.com) for the statusline JSON fields and any limits (update frequency, availability per plan). Write your findings as docs/research/STATUSLINE_FORWARDER.md: fields with exact names, update cadence, caveats, and a 10-line sketch of a forwarder that appends one content-free JSON line per update. Every factual claim cites a URL. Commit the file. (npm test still must pass.)"
+    },
+    {
+      "id": "T07",
+      "type": "review",
+      "agent": "reviewer",
+      "declared": {
+        "p50Min": 10,
+        "p90Min": 20,
+        "calls": 15
+      },
+      "brief": "Independent correctness review of packages/stopwatch/src/stopwatch.js and packages/stopwatch/src/estimator.js (read their tests in packages/stopwatch/test/stopwatch.test.js too). Look for real defects: wrong interval arithmetic, precedence mistakes, off-by-one in quantiles, cases where waiting time could be counted as active, cases where an estimate is produced without basis, numeric edge cases (NaN, zero, negative). Do NOT edit files. Report each finding as: file:line, the concrete input that triggers it, expected vs actual, severity. Say clearly if you find nothing."
+    },
+    {
+      "id": "T08",
+      "type": "scout",
+      "agent": "scout",
+      "declared": {
+        "p50Min": 3,
+        "p90Min": 6,
+        "calls": 8
+      },
+      "brief": "Inventory (read-only) every place in packages/scoreboard (src, app.js, server.js) that reads the legacy session wait `s.waiting` / `snapshot.waiting` versus the v0.2 stopwatch state (`stopwatch.state`, `sw.kind`, `swWaiting`). Return a list of file:line with one phrase each on what the code does with it, and name any place where the two could disagree. Do not edit files."
+    },
+    {
+      "id": "T09",
+      "type": "mechanic",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 5,
+        "p90Min": 10,
+        "calls": 10
+      },
+      "brief": "Add a `--json` flag to the `summary` command of tools/sb-calibrate.js that prints the same counts as a single JSON object { history, live, backfill, byRegime, bySize, byModel } instead of text. Acceptance: `node tools/sb-calibrate.js summary --json --data <tmpdir>` prints valid JSON on an empty data dir; npm test passes."
+    },
+    {
+      "id": "T10",
+      "type": "builder",
+      "agent": "implementer",
+      "declared": {
+        "p50Min": 8,
+        "p90Min": 16,
+        "calls": 12
+      },
+      "brief": "In desktop/main.js add an application-menu item 'Open data folder' (under the existing app/file menu built by buildMenu) that opens the Scoreboard data directory (the same directory passed to createScoreboardServer: process.env.SB_DATA_DIR || defaultDataDir()) with Electron's shell.openPath. Create the directory first if it is missing. Acceptance: `node --check desktop/main.js` passes; the menu template contains the new item; npm test passes. Do not run the packaged build."
+    }
+  ],
+  "plan": [
+    {
+      "run": "T01-haiku-r1",
+      "task": "T01",
+      "model": "haiku"
+    },
+    {
+      "run": "T02-sonnet-r1",
+      "task": "T02",
+      "model": "sonnet"
+    },
+    {
+      "run": "T03-sonnet-r1",
+      "task": "T03",
+      "model": "sonnet"
+    },
+    {
+      "run": "T04-sonnet-r1",
+      "task": "T04",
+      "model": "sonnet"
+    },
+    {
+      "run": "T05-sonnet-r1",
+      "task": "T05",
+      "model": "sonnet"
+    },
+    {
+      "run": "T06-sonnet-r1",
+      "task": "T06",
+      "model": "sonnet"
+    },
+    {
+      "run": "T07-sonnet-r1",
+      "task": "T07",
+      "model": "sonnet"
+    },
+    {
+      "run": "T08-haiku-r1",
+      "task": "T08",
+      "model": "haiku"
+    },
+    {
+      "run": "T09-haiku-r1",
+      "task": "T09",
+      "model": "haiku"
+    },
+    {
+      "run": "T10-sonnet-r1",
+      "task": "T10",
+      "model": "sonnet"
+    },
+    {
+      "run": "T01-haiku-r2",
+      "task": "T01",
+      "model": "haiku",
+      "why": "same-model repeat from a clean start"
+    },
+    {
+      "run": "T03-sonnet-r2",
+      "task": "T03",
+      "model": "sonnet",
+      "why": "same-model repeat"
+    },
+    {
+      "run": "T03-haiku-r1",
+      "task": "T03",
+      "model": "haiku",
+      "why": "cross-model: a bounded test-writing task suits both"
+    },
+    {
+      "run": "T04-sonnet-r2",
+      "task": "T04",
+      "model": "sonnet",
+      "why": "same-model repeat of the largest builder task"
+    },
+    {
+      "run": "T04-opus-r1",
+      "task": "T04",
+      "model": "opus",
+      "why": "cross-model on the largest builder task"
+    },
+    {
+      "run": "T02-sonnet-r2",
+      "task": "T02",
+      "model": "sonnet",
+      "why": "same-model repeat"
+    }
+  ]
+}

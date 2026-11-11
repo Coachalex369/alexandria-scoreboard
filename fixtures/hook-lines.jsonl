@@ -1,0 +1,12 @@
+{"ts":"2026-11-08T18:00:00.000Z","ev":"UserPromptSubmit","sid":"fx-v1","proj":"p","promptLen":400,"hookMs":9}
+{"ts":"2026-11-08T18:00:05.000Z","ev":"PostToolUse","sid":"fx-v1","proj":"p","tool":"Edit","tuid":"t1","durMs":40,"hookMs":9}
+{"ts":"2026-11-09T10:00:05.000Z","ev":"PostToolUse","sid":"fx-v2","proj":"p","v":2,"tool":"Bash","tuid":"t2","durMs":900,"sig":"npm test","tests":{"framework":"node:test","passed":5,"failed":0,"skipped":0,"ok":true,"durationMs":800},"hookMs":9}
+{"ts":"2026-11-11T02:21:17.000Z","ev":"SessionStart","sid":"fx-v3","proj":"p","v":3,"source":"startup","model":"claude-opus-5-5","effort":"high","hookMs":9}
+{"ts":"2026-11-11T02:21:20.000Z","ev":"PermissionRequest","sid":"fx-v3","proj":"p","v":3,"tool":"Bash","hookMs":9}
+{"ts":"2026-11-11T02:21:40.000Z","ev":"StopFailure","sid":"fx-v3","proj":"p","v":3,"error":"rate_limit","status":429,"hookMs":9}
+{"ts":"2026-11-11T02:21:41.000Z","ev":"PostModelSwitch","sid":"fx-v3","proj":"p","v":3,"fromModel":"claude-opus-5-5","toModel":"claude-sonnet-5-5","hookMs":9}
+{"ts":"2026-11-11T03:00:00.000Z","ev":"PostToolUse","sid":"fx-v4","proj":"p","v":4,"tool":"Bash","tuid":"t4a","durMs":300,"sig":"git add","segs":["git add","git commit"],"commit":{"hash":"a1b2c3d4e5f6"},"hookMs":9}
+{"ts":"2026-11-11T03:00:30.000Z","ev":"PostToolUse","sid":"fx-v4","proj":"p","v":4,"tool":"Bash","tuid":"t4b","durMs":4000,"sig":"npm run","segs":["npm run","node --test"],"tests":{"framework":"node:test","passed":12,"failed":0,"skipped":0,"ok":true,"durationMs":900},"hookMs":9}
+{"ts":"2026-11-11T03:01:00.000Z","ev":"PostToolUse","sid":"fx-v4","proj":"p","v":4,"tool":"Bash","tuid":"t4c","durMs":50,"sig":"git status","hookMs":9}
+{"ts":"2026-11-11T02:21:42.000Z","ev":"FutureEventNobodyKnows","sid":"fx-v4","proj":"p","v":4,"hookMs":9}
+not json at all

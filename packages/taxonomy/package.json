@@ -1,0 +1,22 @@
+{
+  "name": "@alexandria/taxonomy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workflow taxonomy for development activity (hierarchy, multi-label schemes, rule classifiers) and a Tree-sitter code-structure proof of concept.",
+  "author": "Alexandria Ltd",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Coachalex369/alexandria-scoreboard.git"
+  },
+  "homepage": "https://github.com/Coachalex369/alexandria-scoreboard#readme",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "tree-sitter-javascript": "^0.25.0",
+    "web-tree-sitter": "^0.27.2"
+  }
+}

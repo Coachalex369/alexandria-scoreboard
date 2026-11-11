@@ -1,0 +1,21 @@
+{
+  "name": "@alexandria/event-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first normalized event engine: schema, adapters (Claude Code hooks, git, test output), task linking, replay and live state. No runtime dependencies.",
+  "author": "Alexandria Ltd",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Coachalex369/alexandria-scoreboard.git"
+  },
+  "homepage": "https://github.com/Coachalex369/alexandria-scoreboard#readme",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "alexandria-engine": "bin/engine.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  }
+}

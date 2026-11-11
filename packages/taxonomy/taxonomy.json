@@ -1,0 +1,127 @@
+{
+  "version": "alexandria.taxonomy/1",
+  "hierarchy": [
+    { "level": "project", "description": "A repository or product (for example a web app, an API or a game). Sets the overall visual palette and musical character." },
+    { "level": "session", "description": "One Claude Code session (session_id). Named tab on the Scoreboard." },
+    { "level": "main-task", "description": "A user brief or an explicit task mark: the unit the ETA counts down and the horn celebrates." },
+    { "level": "subtask", "description": "A segment inside a task: a turn, a phase (recon, build, verify) or a declared sub-goal." },
+    { "level": "agent", "description": "The actor doing the work: the main thread or a named subagent with its own model." },
+    { "level": "work-category", "description": "What kind of work an operation serves (several may apply)." },
+    { "level": "code-structure", "description": "What kind of code structure an operation touches, from parsing the changed files." },
+    { "level": "operation", "description": "One tool call or one observed action: the smallest event." }
+  ],
+  "schemes": {
+    "work-category": {
+      "multi": true,
+      "values": {
+        "research": { "label": "Research & investigation", "hue": 200, "shape": "ring", "instrument": "pad" },
+        "planning": { "label": "Planning & design decisions", "hue": 215, "shape": "polygon", "instrument": "pad" },
+        "ui-design": { "label": "UI & visual design", "hue": 300, "shape": "petal", "instrument": "bell" },
+        "frontend": { "label": "Frontend development", "hue": 280, "shape": "triangle", "instrument": "pluck" },
+        "backend": { "label": "Backend development", "hue": 30, "shape": "square", "instrument": "bass" },
+        "database": { "label": "Database & schema", "hue": 45, "shape": "hexagon", "instrument": "bass" },
+        "api": { "label": "API & integration", "hue": 15, "shape": "diamond", "instrument": "pluck" },
+        "testing": { "label": "Testing", "hue": 120, "shape": "dot-grid", "instrument": "percussion" },
+        "debugging": { "label": "Debugging", "hue": 0, "shape": "zigzag", "instrument": "percussion" },
+        "security": { "label": "Security", "hue": 350, "shape": "shield", "instrument": "low-brass" },
+        "performance": { "label": "Performance", "hue": 60, "shape": "arrow", "instrument": "arp" },
+        "documentation": { "label": "Documentation", "hue": 180, "shape": "line", "instrument": "flute" },
+        "deployment-prep": { "label": "Deployment & release preparation", "hue": 160, "shape": "arc", "instrument": "chord" },
+        "tooling": { "label": "Tooling, CI & scripts", "hue": 90, "shape": "gear", "instrument": "arp" },
+        "localization": { "label": "Localization & copy", "hue": 330, "shape": "wave", "instrument": "flute" },
+        "data-analysis": { "label": "Data analysis & measurement", "hue": 240, "shape": "bars", "instrument": "pad" }
+      }
+    },
+    "language": {
+      "multi": true,
+      "values": {
+        "javascript": { "ext": [".js", ".mjs", ".cjs", ".jsx"] },
+        "typescript": { "ext": [".ts", ".tsx", ".mts", ".cts"] },
+        "gdscript": { "ext": [".gd"] },
+        "python": { "ext": [".py"] },
+        "sql": { "ext": [".sql"] },
+        "html": { "ext": [".html", ".htm"] },
+        "css": { "ext": [".css", ".scss"] },
+        "markdown": { "ext": [".md", ".markdown"] },
+        "json": { "ext": [".json", ".jsonl"] },
+        "yaml": { "ext": [".yml", ".yaml"] },
+        "shell": { "ext": [".sh", ".bash", ".ps1"] },
+        "godot-scene": { "ext": [".tscn", ".tres", ".godot"] },
+        "rust": { "ext": [".rs"] },
+        "other": { "ext": [] }
+      }
+    },
+    "code-structure": {
+      "multi": true,
+      "values": {
+        "function": { "label": "Function", "geometry": "spoke" },
+        "method": { "label": "Method", "geometry": "spoke" },
+        "class": { "label": "Class", "geometry": "ring" },
+        "component": { "label": "UI component", "geometry": "petal" },
+        "loop": { "label": "Loop", "geometry": "spiral" },
+        "condition": { "label": "Condition / branch", "geometry": "fork" },
+        "import": { "label": "Import / dependency", "geometry": "thread" },
+        "variable": { "label": "Variable / constant", "geometry": "dot" },
+        "type": { "label": "Type / interface", "geometry": "frame" },
+        "test-case": { "label": "Test case", "geometry": "tick" },
+        "comment": { "label": "Comment / doc", "geometry": "halo" },
+        "query": { "label": "Query / schema statement", "geometry": "slab" },
+        "markup": { "label": "Markup / style rule", "geometry": "tile" }
+      }
+    },
+    "operation": {
+      "multi": false,
+      "values": {
+        "read": { "tools": ["Read", "Glob", "Grep", "ReadMcpResourceTool", "ListMcpResourcesTool"], "motion": "drift" },
+        "search": { "tools": ["WebSearch", "WebFetch", "ToolSearch"], "motion": "sweep" },
+        "edit": { "tools": ["Edit", "MultiEdit", "NotebookEdit"], "motion": "pulse" },
+        "create": { "tools": ["Write"], "motion": "bloom" },
+        "run": { "tools": ["Bash", "PowerShell"], "motion": "spin" },
+        "browse": { "tools": ["mcp__claude-in-chrome__navigate", "mcp__claude-in-chrome__computer", "mcp__claude-in-chrome__read_page", "mcp__claude-in-chrome__find", "mcp__claude-in-chrome__form_input", "mcp__claude-in-chrome__get_page_text"], "motion": "sweep" },
+        "delegate": { "tools": ["Agent", "Workflow"], "motion": "split" },
+        "ask": { "tools": ["AskUserQuestion", "ExitPlanMode"], "motion": "hold" },
+        "plan": { "tools": ["EnterPlanMode", "Plan"], "motion": "hold" },
+        "publish": { "tools": ["Artifact", "ArtifactComments", "ArtifactData"], "motion": "bloom" },
+        "schedule": { "tools": ["CronCreate", "CronDelete", "CronList", "ScheduleWakeup", "Monitor"], "motion": "tick" },
+        "test": { "tools": [], "motion": "flash", "note": "assigned when a run's command signature is a test or check" },
+        "build": { "tools": [], "motion": "stack", "note": "assigned when a run's command signature is a build" },
+        "commit": { "tools": [], "motion": "seal", "note": "assigned to git commit/push signatures" },
+        "other": { "tools": [], "motion": "drift" }
+      }
+    },
+    "task-type": {
+      "multi": false,
+      "values": {
+        "inspector": { "label": "Audit / investigate" },
+        "architect": { "label": "Design / plan" },
+        "builder": { "label": "Implement feature" },
+        "studio": { "label": "Visual / site work" },
+        "mechanic": { "label": "Fix / maintain" },
+        "gatekeeper": { "label": "Verify / release" },
+        "laboratory": { "label": "Experiment / research" }
+      }
+    },
+    "complexity": { "multi": false, "values": { "S": { "label": "small" }, "M": { "label": "medium" }, "L": { "label": "large" } } }
+  },
+  "run-signatures": [
+    { "operation": "test", "work-category": ["testing"], "pattern": "(^|\\s|/)(npm|pnpm|yarn)\\s+(run\\s+)?(test|check)(:|\\s|$)|node --test|run_tests\\.tscn|tools/test\\.sh|pytest|jest|vitest|cargo test|gh run " },
+    { "operation": "build", "work-category": ["deployment-prep", "tooling"], "pattern": "(^|\\s)(npm|pnpm|yarn)\\s+run\\s+build|--export-(debug|release)|cargo build|docker build|wrangler (deploy|publish)|vite build" },
+    { "operation": "commit", "work-category": ["deployment-prep"], "pattern": "git (commit|push|merge|tag|checkout -b)" },
+    { "operation": "run", "work-category": ["database"], "pattern": "psql|migrations?/|docker exec .*postgres" },
+    { "operation": "run", "work-category": ["debugging"], "pattern": "--debug|tail -|grep -n .*error|log-failed" },
+    { "operation": "run", "work-category": ["research"], "pattern": "(^|\\s)(ls|find|wc|head|cat|sed -n|git log|git show|git diff|npm view|gh repo view|gh api)(\\s|$)" },
+    { "operation": "run", "work-category": ["data-analysis"], "pattern": "node -e|python -|analysis/" }
+  ],
+  "path-hints": [
+    { "match": "(^|/)(test|tests|__tests__|spec)(/|$)|\\.test\\.|\\.spec\\.|test_[a-z_]+\\.gd$", "work-category": ["testing"] },
+    { "match": "(^|/)docs?/|README|CLAUDE\\.md|\\.md$", "work-category": ["documentation"] },
+    { "match": "(^|/)(migrations?|db|schema)(/|\\.sql$)", "work-category": ["database", "backend"] },
+    { "match": "(^|/)(server|api|routes|services|src/server)(/|$)", "work-category": ["backend"] },
+    { "match": "(^|/)(client|public|ui|components|pages|views|styles?)(/|$)|\\.(css|scss|html)$", "work-category": ["frontend"] },
+    { "match": "\\.(tscn|tres|gd)$", "work-category": ["frontend"], "note": "game scenes and scripts count as front-of-house work" },
+    { "match": "(^|/)(i18n|l10n|locales?|lang)(/|$)", "work-category": ["localization"] },
+    { "match": "(^|/)\\.github/|(^|/)(tools|scripts|ci)(/|$)|\\.(yml|yaml|ps1|sh)$", "work-category": ["tooling"] },
+    { "match": "(^|/)(security|auth|guardian|permission)", "work-category": ["security"] },
+    { "match": "(^|/)(perf|performance|bench)", "work-category": ["performance"] }
+  ]
+}

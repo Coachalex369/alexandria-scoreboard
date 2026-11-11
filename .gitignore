@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+build-vendor/
+data/
+*.log
+.DS_Store
+Thumbs.db
+.env*
+*.events.jsonl
+!demo/recordings/*.events.jsonl

@@ -1,0 +1,19 @@
+{
+  "name": "@alexandria/scoreboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Alexandria Scoreboard: vintage gym scoreboard presentation over the shared event model. Board model, prediction tracker and alert policy are pure and browser-safe; server.js is the local Node feed.",
+  "author": "Alexandria Ltd",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Coachalex369/alexandria-scoreboard.git"
+  },
+  "homepage": "https://github.com/Coachalex369/alexandria-scoreboard#readme",
+  "exports": {
+    ".": "./src/board.js",
+    "./eta": "./src/eta.js",
+    "./alerts": "./src/alerts.js"
+  }
+}

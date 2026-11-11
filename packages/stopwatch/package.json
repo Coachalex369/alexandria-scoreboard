@@ -1,0 +1,15 @@
+{
+  "name": "@alexandria/stopwatch",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Stopwatch and ETA engine: active/waiting time partition with basis, calibrated remaining-time ranges, leakage-free evaluation. Source-independent and browser-safe.",
+  "author": "Alexandria Ltd",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Coachalex369/alexandria-scoreboard.git"
+  },
+  "homepage": "https://github.com/Coachalex369/alexandria-scoreboard#readme",
+  "main": "src/index.js"
+}

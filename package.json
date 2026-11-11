@@ -1,0 +1,99 @@
+{
+  "name": "alexandria-scoreboard",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Alexandria Scoreboard: a free, local Claude Code companion. Vintage basketball-scoreboard view of live Claude Code sessions and subagents, a stopwatch that excludes waiting time, calibrated ETA ranges, rate-limit and approval alerts, completion sounds, workflow analytics.",
+  "author": "Alexandria Ltd",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Coachalex369/alexandria-scoreboard.git"
+  },
+  "homepage": "https://github.com/Coachalex369/alexandria-scoreboard#readme",
+  "type": "module",
+  "workspaces": [
+    "packages/event-engine",
+    "packages/taxonomy",
+    "packages/scoreboard",
+    "packages/stopwatch"
+  ],
+  "scripts": {
+    "test": "node --test \"packages/*/test/*.test.js\" \"test/*.test.js\"",
+    "demo:record": "node packages/event-engine/bin/engine.js ingest claude-hooks \"%USERPROFILE%/.claude/eta/events.jsonl\" --out data/live-hooks.events.jsonl",
+    "engine": "node packages/event-engine/bin/engine.js",
+    "scoreboard": "node packages/scoreboard/server.js",
+    "start": "node packages/scoreboard/server.js",
+    "mark": "node tools/sb-mark.js",
+    "desktop": "electron .",
+    "dist:win": "node tools/make-icon.js && electron-builder --win --x64",
+    "dist:dir": "electron-builder --win --x64 --dir",
+    "dist:zip": "node tools/make-icon.js && electron-builder --win zip --x64",
+    "collector:install": "node tools/install-collector-v3.mjs",
+    "dist:arm64": "node tools/make-icon.js && electron-builder --win zip --arm64",
+    "protocol:check": "node --test test/protocol-drift.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  },
+  "main": "desktop/main.js",
+  "build": {
+    "appId": "com.alexandrialtd.scoreboard",
+    "productName": "Alexandria Scoreboard",
+    "copyright": "Alexandria Ltd.",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "desktop/**",
+      "packages/scoreboard/**",
+      "packages/stopwatch/**",
+      "packages/event-engine/**",
+      "packages/taxonomy/**",
+      "!packages/**/test/**",
+      "!packages/**/README.md",
+      "!packages/taxonomy/bin/**",
+      "tools/sb-mark.js",
+      "tools/install-collector-v3.mjs",
+      "collector/**",
+      "demo/recordings/**",
+      "docs/SCOREBOARD.md",
+      "PROTOCOL_VERSION.json",
+      "package.json",
+      "build/icon.png",
+      "!**/node_modules/**",
+      "LICENSE",
+      "NOTICE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "asar": false,
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "Alexandria-Scoreboard-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Alexandria Scoreboard",
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    },
+    "publish": null
+  }
+}
