@@ -68,37 +68,31 @@ Live data comes from a small Claude Code hook, `collector/eta-hook.mjs`, that ap
 
 **What it logs:** timestamps, event kinds, session, prompt and tool-use ids, the project folder name, tool names, tool
 durations, prompt *length*, subagent type and declared model, notification kinds, a redacted command signature (for
-example `npm test`, never arguments) and pass/fail counts parsed from test output.
+example `npm test`, never arguments) for each part of a chained command, pass/fail counts parsed from test output,
+and the short hash of a successful `git commit` (never the commit message).
 
 **What it never logs:** prompt text, tool inputs (commands, file contents, URLs), tool outputs, assistant messages,
 notification text, environment variables or credentials. The event schema rejects payload keys that could carry
 content, and the tests check this with marker strings.
 
-### First-time installation (manual)
+### Installing the collector
 
-The installer upgrades an existing collector entry and does not create the first one, so install it once by hand.
-Claude Code does not let an agent edit its own settings, so do this yourself.
-
-1. Copy `collector/eta-hook.mjs` to `~/.claude/eta/eta-hook.mjs` (create the folder).
-2. Back up `~/.claude/settings.json`.
-3. Merge the `hooks` section of `collector/hooks.settings-fragment.json` into the `hooks` section of
-   `~/.claude/settings.json`. In the fragment the command is written as `node "~/.claude/eta/eta-hook.mjs"`: **replace
-   that path with the absolute path to your own copy** (for example `node "<home>/.claude/eta/eta-hook.mjs"`
-   with `<home>` being your user folder, the folder that contains `.claude`), because the path must be the user's own.
-4. Start a new Claude Code session. New lines appear in `~/.claude/eta/events.jsonl`.
-
-To roll back, remove those hook entries and restore your backup.
-
-### Upgrading an existing collector
-
-Once a collector entry exists, the installer can bring it up to the current version:
+Run the installer yourself from this repository (Claude Code does not let an agent edit its own settings, and you
+should read what you install: `collector/eta-hook.mjs` is short):
 
 ```
-node tools/install-collector-v3.mjs            # dry run: checks everything, changes nothing
-node tools/install-collector-v3.mjs --apply    # backups, install, verify; prints the rollback command
+node tools/install-collector-v3.mjs                  # dry run: first-time install or upgrade, lists every change
+node tools/install-collector-v3.mjs --apply          # backs up settings.json and the hook, installs, verifies
+node tools/install-collector-v3.mjs --rollback <stamp>   # undo, using the stamp printed by --apply
 ```
 
-It only adds missing hooks and never removes or downgrades anything.
+- First-time install: copies the hook to `~/.claude/eta/eta-hook.mjs` and adds the collector's hook entries to
+  `~/.claude/settings.json` (created if missing) with the absolute path of your own home folder.
+- Upgrade: replaces the hook file and adds only missing hook entries. Hooks are never removed, other settings are left
+  untouched, and a newer installed collector is never downgraded (unless `--force`).
+- Backups go to `~/.claude/backups/`. `--rollback` restores both files exactly as they were before that install (later
+  changes to them are reverted too), so use it as an immediate undo.
+- Start a new Claude Code session afterwards; new lines appear in `~/.claude/eta/events.jsonl`.
 
 ## Marking tasks
 

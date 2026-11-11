@@ -154,5 +154,6 @@ test("collector v3 installer merge adds only missing events, copies the installe
   assert.deepEqual(out.hooks.StopFailure[0].hooks[0], cmd); assert.deepEqual(out.env, settings.env); assert.deepEqual(out.permissions, settings.permissions);
   assert.equal(settings.hooks.StopFailure, undefined, "input not mutated");
   assert.deepEqual(mergeHooks(out).added, [], "idempotent");
-  assert.throws(() => mergeHooks({ hooks: {} }), /no existing collector/);
+  const ft = mergeHooks({ hooks: {} }, undefined, "C:/home/someone"); // protocol 3.2: first-time install instead of an error
+  assert.equal(ft.firstTime, true); assert.equal(ft.added.length, 15); assert.ok(ft.settings.hooks.Stop[0].hooks[0].command.includes("C:/home/someone/.claude/eta/eta-hook.mjs"));
 });

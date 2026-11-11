@@ -1,6 +1,6 @@
 {
  "name": "alexandria-protocol",
- "version": "3.1.1",
+ "version": "3.2.0",
  "collector": 4,
  "files": {
   "collector/eta-hook.mjs": "9ba40ee99f45032018ea95e4126a9333187148ddd4a31d791600f2322e97accf",
@@ -27,9 +27,9 @@
   "packages/taxonomy/taxonomy.json": "dc232183fcd5b1e572ba95144abd63df6705640cea32f7e9d3739743b344dd7b",
   "packages/taxonomy/test/codeStructure.test.js": "de145ab9504af246e2d6a92747ec6fc7ef088bf711281e895f3b5f3208eb68c1",
   "packages/taxonomy/test/taxonomy.test.js": "d2082510d8ca4e5132127319ce6bf7f362dee08200edbe151038b7d9622a2b57",
-  "tools/install-collector-v3.mjs": "4f5dd2c78af87083e5a65a61d67e8ad4f22b843bdf510d8636d3056e0649ca8c",
+  "tools/install-collector-v3.mjs": "b76b6fc26e3924eb072cd29889bb7bc631aaf0ea1041410c66a66371779bfee2",
   "fixtures/hook-lines.jsonl": "7bd8401f9a7117d27f57f7ad3396572769548e1a1c1b9e38ecc1fce80cff045c"
  },
- "syncedAt": "2026-11-11T04:29:26.042Z",
+ "syncedAt": "2026-11-11T04:50:02.123Z",
  "source": "alexandria-protocol"
 }

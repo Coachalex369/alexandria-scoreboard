@@ -138,25 +138,11 @@ reported because no billing data was observed.
 - Windows: unsigned builds can be blocked by Smart App Control; see `BUILDING_WINDOWS.md`.
 
 
-## 7. Installing collector v3 or later
+## 7. Installing the collector
 
-Claude Code blocks agents from editing `~/.claude/settings.json`, so you run the installer yourself from this repository.
-The installer upgrades an existing collector entry; for a first-time install see the README ("Collector"):
-
-```
-node tools/install-collector-v3.mjs            # dry run: probe + plan, changes nothing
-node tools/install-collector-v3.mjs --apply    # backups, install, verification, prints the rollback command
-node tools/install-collector-v3.mjs --rollback <stamp>
-```
-
-Manual equivalent for an existing collector, if preferred:
-1. `copy %USERPROFILE%\.claude\settings.json %USERPROFILE%\.claude\backups\settings.json.pre-eta-v3-manual` and the same
-   for `%USERPROFILE%\.claude\eta\eta-hook.mjs`.
-2. Copy `collector\eta-hook.mjs` over `%USERPROFILE%\.claude\eta\eta-hook.mjs`.
-3. In `settings.json` → `hooks`, add `StopFailure`, `PermissionRequest`, `PermissionDenied`, `PreCompact`, `PostCompact`,
-   `PostModelSwitch`, each with the same entry the existing `Stop` hook has (see `collector/hooks.settings-fragment.json`).
-4. Start a new Claude Code session; the next hook lines in `~/.claude/eta/events.jsonl` carry `"v":3`.
-Rollback: copy the two backups back.
+Run `node tools/install-collector-v3.mjs` (dry run), then `--apply`; it handles first-time installs and upgrades, keeps
+backups and prints a `--rollback <stamp>` command. Details: README, "Installing the collector". Collector v4 records carry
+`"v":4`.
 
 Overhead: the six events are rare (permission dialogs, API errors, compaction, model switches); each costs one Node
 start (~0.25 s). `PermissionRequest` runs before the dialog appears; the collector prints nothing, so it never
