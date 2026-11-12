@@ -38,14 +38,51 @@ const SUBCOMMAND_TOOLS = new Set(['git', 'npm', 'npx', 'pnpm', 'yarn', 'cargo', 
 
 // v4: split a shell command into segments on && || ; | and newlines, never inside single or double quotes.
 // A tokenizer only: nothing is evaluated. Returns trimmed non-empty segments (text stays in memory; only signatures are written).
+// 3.2.1 security fix: here-doc bodies (sh `<<DELIM`, `<<-DELIM`, quoted delimiters; PowerShell `@'`/`@"` here-strings)
+// are file content, not commands. They are skipped entirely, never split into segments, so no word of them can become
+// a signature. An unterminated body is skipped to the end of the command.
 export function splitSegments(command) {
   if (typeof command !== 'string') return [];
   const segs = []; let cur = '', q = null;
+  const pending = [];                                       // here-doc delimiters opened on the current line
   const push = () => { const t = cur.trim(); if (t) segs.push(t); cur = ''; };
+  // From index `from` (start of a line), skip body lines until one equals the delimiter; returns the next line's index.
+  const skipBody = (from, test) => {
+    let i = from;
+    while (i < command.length) {
+      let end = command.indexOf('\n', i); if (end < 0) end = command.length;
+      const line = command.slice(i, end).replace(/\r$/, '');
+      i = end + 1;
+      if (test(line)) return i;
+    }
+    return command.length;
+  };
   for (let i = 0; i < command.length; i++) {
     const c = command[i];
     if (q) { cur += c; if (c === q) q = null; continue; }
+    if (c === '<' && command[i + 1] === '<' && command[i + 2] !== '<') {   // `<<DELIM` (not the `<<<` here-string)
+      const m = /^<<(-?)\s*(?:'([^'\n]*)'|"([^"\n]*)"|([A-Za-z0-9_]+))/.exec(command.slice(i));
+      if (m) { pending.push({ delim: m[2] ?? m[3] ?? m[4], tabs: m[1] === '-' }); cur += m[0]; i += m[0].length - 1; continue; }
+    }
+    if ((c === '@') && (command[i + 1] === "'" || command[i + 1] === '"') && /^[ \t]*\r?(\n|$)/.test(command.slice(i + 2))) {
+      const close = command[i + 1] + '@';                    // PowerShell here-string: body until a line starting with '@ / "@
+      cur += '@' + command[i + 1];
+      const nl = command.indexOf('\n', i); if (nl < 0) { i = command.length; break; }
+      const after = skipBody(nl + 1, (line) => line.trimStart().startsWith(close));
+      // continue after the closing line's terminator text on that line
+      const closeLine = command.lastIndexOf('\n', after - 2) + 1;
+      const closeAt = command.indexOf(close, closeLine);
+      cur += close; i = (closeAt >= 0 ? closeAt + close.length : command.length) - 1;
+      continue;
+    }
     if (c === '"' || c === "'") { q = c; cur += c; continue; }
+    if (c === String.fromCharCode(10) && pending.length) {   // end of a line that opened here-docs: skip their bodies
+      push();
+      let at = i + 1;
+      for (const h of pending.splice(0)) at = skipBody(at, (line) => (h.tabs ? line.replace(/^\t+/, '') : line) === h.delim);
+      i = at - 1;
+      continue;
+    }
     if (c === ';' || c === '|' || c === String.fromCharCode(10) || c === String.fromCharCode(13)) { push(); continue; } // newline or CR
     if (c === '&' && command[i + 1] === '&') { push(); i++; continue; }
     cur += c;
