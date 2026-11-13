@@ -31,6 +31,9 @@ test("3.2.2: allowlists — first word, second word and script names; anything e
   assert.equal(signature(`yarn ${M}`), "yarn cmd"); assert.equal(signature(`npm run ${M}`), "npm run cmd"); assert.equal(signature(`npm run build:${M}`), "npm run cmd");
   assert.equal(signature(`npx ${M}`), "npx cmd"); assert.equal(signature(`${M} --flag`), "cmd"); assert.equal(signature(`./${M}.sh`), "cmd");
   assert.equal(signature("git status"), "git status"); assert.equal(signature("npm run test:unit"), "npm run test:unit"); assert.equal(signature("npx tsc"), "npx tsc");
+  // Script names are kept only on an exact allowlist match (base, or base:suffix with both listed), never by prefix.
+  for (const [c, want] of [["npm run test:acme-client", "npm run cmd"], ["pnpm run test:acme-client", "pnpm run cmd"], ["yarn test:acme-client", "yarn cmd"], ["npm run test:acme", "npm run cmd"], ["npm run testacme", "npm run cmd"], ["npm run test:unitx", "npm run cmd"], ["npm run build:win", "npm run build:win"]])
+    assert.equal(signature(c), want, c);
   let seed = 7; const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
   for (let i = 0; i < 300; i++) {
     const w = "zq" + Math.floor(rnd() * 1e9).toString(36);
