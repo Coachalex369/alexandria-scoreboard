@@ -4,6 +4,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { makeEvent } from "../../event-engine/src/schema.js";
 import { Board, CLOCK_RULES } from "../src/board.js";
+import { gameClockView, rangeWords } from "../src/clockView.js";
+import { stepsLeftPulse, PULSE_CYCLE_MS, PULSE } from "../src/pulse.js";
 
 const T0 = Date.parse("2026-11-13T10:00:00.000Z");
 let n = 0;
@@ -78,7 +80,7 @@ test("a new estimate adjusts the clock visibly (shown for adjustShowMs), never s
   const s = snap(b, 61);
   assert.equal(s.game.adjustments, 1);
   const adj = s.game.adjustment;
-  assert.ok(adj, "the adjustment is on the snapshot"); assert.equal(adj.reason, "declared estimate changed"); assert.equal(adj.fromOvertime, false);
+  assert.ok(adj, "the adjustment is on the snapshot"); assert.equal(adj.reason, "declared estimate changed");
   assert.equal(adj.fromMs, before - 1000); assert.equal(adj.toMs, s.game.remainingMs); assert.ok(adj.deltaMs > 4 * 60e3, `a later estimate adds time, got ${adj.deltaMs}`);
   assert.ok(snap(b, 61 + CLOCK_RULES.adjustShowMs / 1000 - 1).game.adjustment, "still shown");
   b.apply(tool(100));
@@ -90,24 +92,35 @@ test("a new estimate adjusts the clock visibly (shown for adjustShowMs), never s
   assert.equal(snap(b, 201).game.adjustments, 1);
 });
 
-test("at 0:00 OVERTIME counts UP from zero while work continues; a new estimate is a clearly marked CLOCK RESET", () => {
+test("crossing 0:00 lights OVERTIME and resets to a fresh estimate that counts down again; never negative, never up", () => {
   const b = declared(1); // one declared minute
   b.apply(tool(5));
   const start = snap(b, 6).game;
-  const target = start.target.activeMs;
-  for (let t = 30; t <= 600; t += 30) b.apply(tool(t));
-  const ot = snap(b, 600).game;
-  assert.equal(ot.mode, "overtime"); assert.ok(ot.overtimeMs > 0);
-  const ot2 = snap(b, 610).game;
-  assert.equal(ot2.overtimeMs - ot.overtimeMs, 10e3, "counts up second by second");
-  assert.equal(ot2.target.activeMs, target, "the expired estimate is not silently replaced");
-  b.apply(ev(610, "task.estimate", { source: "marks", observed: false, task: { id: "T1" }, payload: { p50Min: 30 } }));
-  const reset = snap(b, 611).game;
-  assert.equal(reset.adjustment.fromOvertime, true, "shown as a clock reset");
-  assert.equal(reset.mode, "countdown");
-  b.apply(ev(620, "task.end", { source: "marks", actor: human, task: { id: "T1" } })); // a marked task ends with its mark
+  assert.equal(start.overtime, 0);
+  let crossed = null, prev = start.remainingMs;
+  for (let t = 7; t <= 600; t++) {
+    if (t % 30 === 0) b.apply(tool(t));
+    const g = snap(b, t).game;
+    assert.equal(g.mode, "countdown", `t=${t}: always a countdown`); assert.ok(g.remainingMs >= 0, `t=${t}: never negative`);
+    if (g.overtime > (crossed?.overtime ?? 0)) { assert.ok(g.remainingMs > prev, `t=${t}: the reset jumps up from 0:00`); crossed = g; }
+    else if (crossed) assert.ok(g.remainingMs <= prev, `t=${t}: then counts down`);
+    prev = g.remainingMs;
+  }
+  assert.ok(crossed, "the declared minute ran out"); assert.ok(["re-estimated", "lower bound", "minimum step"].includes(crossed.reset));
+  assert.ok(crossed.remainingMs >= CLOCK_RULES.overtimeMinStepMs - 1000, "every reset is at least the minimum step");
+  b.apply(ev(620, "task.end", { source: "marks", actor: human, task: { id: "T1" } }));
   const fin = snap(b, 630);
   assert.equal(fin.game.mode, "final"); assert.equal(fin.gameClock.value, 0);
+});
+
+test("without a fresh estimate the reset uses the last range's lower bound, labelled EST", () => {
+  const b = declared(0.05); b.apply(tool(1)); // 3 declared seconds: the prior soon has nothing left above the elapsed time
+  snap(b, 2);
+  for (let t = 3; t <= 400; t++) { if (t % 20 === 0) b.apply(tool(t)); const g = snap(b, t).game; assert.ok(g.remainingMs >= 0); assert.equal(g.mode, "countdown"); }
+  const g = snap(b, 400).game;
+  assert.ok(g.overtime >= 1); assert.equal(g.estimate, true, "EST lamp and range note");
+  assert.ok(["lower bound", "minimum step"].includes(g.reset), `fallback path, got ${g.reset}`);
+  assert.ok(g.overtime < 40, `at least 30 s per reset: no reset loop (${g.overtime} resets in 400 s)`);
 });
 
 // Regressions.
@@ -146,4 +159,47 @@ test("an adjustment made while the clock is stopped stays on show until the cloc
   assert.ok(snap(b, 420).game.adjustment, "10 s after resuming: still shown");
   b.apply(tool(450));
   assert.equal(snap(b, 410 + CLOCK_RULES.adjustShowMs / 1000 + 1).game.adjustment, null, "gone after the clock ran adjustShowMs");
+});
+
+test("the GAME CLOCK digits never show a '+', a unit letter or a negative time, and never blink", () => {
+  const states = [{ mode: "unknown" }, { mode: "final" }, undefined];
+  for (const ms of [0, 1, 999, 1000, 59_999, 60_000, 599_000, 3_599_000, 3_600_000, 3_660_000, 99 * 3_600_000, -5_000, NaN]) for (const overtime of [0, 1, 3]) for (const estimate of [false, true]) states.push({ mode: "countdown", remainingMs: ms, overtime, estimate });
+  for (const g of states) {
+    const v = gameClockView(g);
+    assert.ok(!/[+A-Za-z]/.test(v.text), `no + and no unit letter: ${v.text} for ${JSON.stringify(g)}`);
+    assert.equal(v.flash, false, "never blinks");
+    assert.match(v.text, /^(\s?\d{1,2}:\d{2}|--:--)$/, `M:SS or H:MM only: ${v.text}`);
+  }
+  const h = gameClockView({ mode: "countdown", remainingMs: 3_660_000, overtime: 1, estimate: true });
+  assert.equal(h.text.trim(), "1:01"); assert.deepEqual(h.lamps, { overtime: true, est: true, hrs: true }, "H:MM with HRS; OVERTIME and EST lamps carry the state");
+  assert.equal(gameClockView({ mode: "countdown", remainingMs: 61_000, overtime: 0 }).text.trim(), "1:01"); assert.equal(gameClockView({ mode: "countdown", remainingMs: 61_000 }).lamps.hrs, false);
+});
+
+test("STEPS LEFT pulse: two quick dim-bright pulses (~1 s), 30 s steady, repeating; steady when dark or under reduced motion", () => {
+  assert.equal(PULSE_CYCLE_MS, 31_000); assert.equal(PULSE.count * PULSE.pulseMs, 1_000);
+  const seq = (from, to, step) => { const out = []; for (let t = from; t < to; t += step) out.push(stepsLeftPulse(t)); return out.join(","); };
+  assert.equal(seq(0, 1000, 250), "dim,bright,dim,bright", "two pulses in the first second");
+  for (let t = 1000; t < 31_000; t += 250) assert.equal(stepsLeftPulse(t), "bright", `steady at ${t}`);
+  assert.equal(seq(31_000, 32_000, 250), "dim,bright,dim,bright", "and again");
+  assert.equal(seq(62_000, 63_000, 250), "dim,bright,dim,bright");
+  for (let t = 0; t < 70_000; t += 125) { assert.equal(stepsLeftPulse(t, { reduced: true }), "bright"); assert.equal(stepsLeftPulse(t, { lit: false }), "bright"); }
+});
+
+test("app wiring: the GAME CLOCK display is never set to flash or question-mark blink", async () => {
+  const src = (await import("node:fs")).readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  const clockLines = src.split("\n").filter((l) => l.includes("D.clock."));
+  assert.ok(clockLines.length > 0);
+  for (const l of clockLines) {
+    for (const m of l.matchAll(/D\.clock\.setFlash\(([^)]*)\)/g)) assert.equal(m[1].trim(), "false", l.trim());
+    assert.ok(!/D\.clock\.el\.classList\.(add|toggle)\("qmark"/.test(l), l.trim());
+  }
+});
+
+test("a floored overtime reset shows a range that contains the step; sub-minute ranges read UNDER 1 MIN, never 0-0", () => {
+  const b = declared(0.05); b.apply(tool(1)); snap(b, 2);
+  let g = null; for (let t = 3; t <= 40; t++) { g = snap(b, t).game; if (g.overtime) break; }
+  assert.ok(g?.overtime >= 1, "crossed 0:00"); assert.equal(g.reset, "minimum step");
+  assert.ok(g.range.loMs <= g.remainingMs && g.remainingMs <= g.range.hiMs, "the range contains what is counted down");
+  assert.equal(rangeWords(g.range), "UNDER 1 MIN");
+  assert.equal(rangeWords({ loMs: 0, hiMs: 0 }), "UNDER 1 MIN"); assert.equal(rangeWords({ loMs: 120e3, hiMs: 600e3 }), "2–10 MIN");
 });

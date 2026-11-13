@@ -16,7 +16,7 @@ everything on your machine.
 ## Features
 
 - **Live board.** STEPS DONE (the team's completed work), STEPS LEFT (declared scope), a GAME CLOCK that counts
-  down the estimated time left (overtime counts up), YOUR MOVE (how long Claude has been waiting on you), TURN, ISSUES
+  down the estimated time left (at 0:00 OVERTIME lights and it re-estimates and counts down again), YOUR MOVE (how long Claude has been waiting on you), TURN, ISSUES
   (unresolved problems), VERIFIED (currently valid checks), CHECK-INS (requests waiting for you), AGENTS, and a ticker
   of the current task in plain English.
 - **Stopwatch that excludes waiting.** Time is partitioned into active, waiting (approval, question, the user's move,

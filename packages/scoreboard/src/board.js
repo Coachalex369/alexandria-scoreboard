@@ -13,7 +13,7 @@
 //   WINS        shared team score of the session (main + subagents), by tier (scoring.js)          observed/inferred
 //   GAME CLOCK  estimated time LEFT in the current period, never time spent (design decision 2026-11-13): counts
 //               down in active time from the best available estimate (low confidence = labelled estimate + range),
-//               stops during waits, adjusts only visibly on new evidence, OVERTIME counts up from 0:00; unknown when
+//               stops during waits, adjusts only visibly on new evidence, at 0:00 OVERTIME lights and it resets and counts down; unknown when
 //               there is no estimate                                                                 predicted
 //   TIMER       (formerly SHOT CLOCK; design decision 2026-11-13) counts UP from 0:00 only while Claude is blocked on
 //               the owner: approval, question / plan approval / input, or the owner's move inside an open task.
@@ -53,7 +53,7 @@ export function sizeBucket(promptLen) { if (promptLen == null) return null; retu
 // from running down); a re-set of at least adjustMinMs is recorded and shown for adjustShowMs. Agent estimates
 // (SHOT CLOCK) need their own type's history.
 export const ATTENTION_STALE_MS = 12 * 3600e3;
-export const CLOCK_RULES = { countdownConfidence: ["high", "medium"], adjustMinMs: 15e3, adjustShowMs: 30e3, agentMinN: 6, agentCountdownN: 12, agentCountdownSpread: 3, agentMinTail: 3 };
+export const CLOCK_RULES = { countdownConfidence: ["high", "medium"], adjustMinMs: 15e3, adjustShowMs: 30e3, overtimeMinStepMs: 30e3, agentMinN: 6, agentCountdownN: 12, agentCountdownSpread: 3, agentMinTail: 3 };
 // Waits that block Claude on the OWNER. Claude-side stops (rate limit, API error, external, declared pause, stall)
 // are deliberately absent: they stop the GAME CLOCK but never run the TIMER.
 export const USER_WAIT_KINDS = new Set(["approval", "question", "owner"]);
@@ -511,7 +511,7 @@ export class Board {
       const extra = dActive > dWall ? dActive - dWall : dActive < 0 ? dActive : 0;
       if (Math.abs(extra) >= CLOCK_RULES.adjustMinMs) {
         const before = t.target.activeMs - prev.active;
-        (t.adjustments ||= []).push({ at: new Date(nowMs).toISOString(), activeAt: active, fromMs: before, toMs: before - extra, deltaMs: -extra, fromOvertime: false, reason: extra > 0 ? "long silent tool run counted" : "wait found afterwards" });
+        (t.adjustments ||= []).push({ at: new Date(nowMs).toISOString(), activeAt: active, fromMs: before, toMs: before - extra, deltaMs: -extra, reason: extra > 0 ? "long silent tool run counted" : "wait found afterwards" });
       }
     }
     t.clockLast = nowMs >= (prev?.nowMs ?? -Infinity) ? { nowMs, active } : prev;
@@ -521,12 +521,12 @@ export class Board {
       const evidence = gameEvidence(v2, t.estimate);
       if (!t.target || t.target.evidence !== evidence) {
         const est = !CLOCK_RULES.countdownConfidence.includes(v2.confidence);
-        const next = { activeMs: active + r.p50, loActiveMs: est ? active + r.p10 : null, hiActiveMs: est ? active + r.p90 : null, at: new Date(nowMs).toISOString(), confidence: v2.confidence, method: v2.method, n: v2.n, evidence };
+        const next = { activeMs: active + r.p50, loActiveMs: est ? active + r.p10 : null, hiActiveMs: est ? active + r.p90 : null, durMs: r.p50, loDurMs: r.p10 ?? null, hiDurMs: r.p90 ?? null, overtime: t.target?.overtime || 0, at: new Date(nowMs).toISOString(), confidence: v2.confidence, method: v2.method, n: v2.n, evidence };
         if (!t.target) t.target = next;
         else {
           const before = t.target.activeMs - active, delta = r.p50 - before;
           if (Math.abs(delta) >= CLOCK_RULES.adjustMinMs) {
-            (t.adjustments ||= []).push({ at: next.at, activeAt: active, fromMs: before, toMs: r.p50, deltaMs: delta, fromOvertime: before < 0, reason: adjustReason(t.target, next) });
+            (t.adjustments ||= []).push({ at: next.at, activeAt: active, fromMs: before, toMs: r.p50, deltaMs: delta, reason: adjustReason(t.target, next) });
             t.target = next;
           } else { // same time within the threshold: keep the countdown, refresh what the label says about it
             const keep = t.target.activeMs - next.activeMs;
@@ -535,6 +535,22 @@ export class Board {
         }
       }
     }
+    // OVERTIME (design decision 2026-11-13): at 0:00 the OVERTIME lamp lights and the clock resets to the estimator's
+    // remaining-time p50 and counts down again. Without a fresh estimate it resets to the lower bound of the last known
+    // range (labelled EST). It never shows a negative time and never counts up.
+    if (t.target && t.target.activeMs - active <= 0) {
+      const tg = t.target, fresh = r?.p50 != null && r.p50 > 0 && v2.state === "estimating";
+      const raw = fresh ? r.p50 : tg.loDurMs > 0 ? tg.loDurMs : tg.durMs > 0 ? tg.durMs : 60e3;
+      const step = Math.max(raw, CLOCK_RULES.overtimeMinStepMs); // never a reset loop of a few seconds at 0:00
+      const floored = step > raw;
+      // the range shown must contain the step actually counted down (a floored step is never shown as a 0-0 range)
+      const lo = floored ? step : fresh ? r.p10 : step;
+      const hi = floored ? Math.max(step, r?.p90 ?? 0) : fresh ? r.p90 : tg.hiDurMs > step ? tg.hiDurMs : null;
+      const est = !fresh || floored || !CLOCK_RULES.countdownConfidence.includes(v2.confidence);
+      t.target = { ...tg, activeMs: active + step, loActiveMs: est ? active + Math.max(0, lo ?? step) : null, hiActiveMs: est && hi != null ? active + hi : est ? active + step : null,
+        durMs: step, loDurMs: fresh ? r.p10 : tg.loDurMs, hiDurMs: fresh ? r.p90 : tg.hiDurMs, confidence: fresh ? v2.confidence : tg.confidence, overtime: (tg.overtime || 0) + 1,
+        reset: floored ? "minimum step" : fresh ? "re-estimated" : "lower bound", at: new Date(nowMs).toISOString(), ...(fresh ? { evidence: gameEvidence(v2, t.estimate) } : {}) };
+    }
     const stopped = sw.state !== "active" ? { state: sw.state, kind: sw.kind, forUser: !!userWaitOf(sw, alive) } : null;
     if (!t.target) return { mode: "unknown", basis: "unavailable", stopped, confidence: v2?.confidence || "none", n: v2?.n ?? 0, note: v2?.note || "insufficient data" };
     const tg = t.target, remainingMs = tg.activeMs - active;
@@ -542,10 +558,9 @@ export class Board {
     const adjustment = last && active - last.activeAt < CLOCK_RULES.adjustShowMs ? last : null; // shown for adjustShowMs of RUNNING clock
     const estimate = tg.loActiveMs != null;
     const range = estimate ? { loMs: Math.max(0, tg.loActiveMs - active), hiMs: Math.max(0, tg.hiActiveMs - active) } : null;
-    const common = { basis: "predicted", target: tg, confidence: tg.confidence, estimate, range, stopped, adjustment, adjustments: t.adjustments?.length || 0 };
-    return remainingMs >= 0
-      ? { mode: "countdown", remainingMs, ...common, note: estimate ? `estimate · ${tg.confidence} confidence` : `${tg.confidence} confidence` }
-      : { mode: "overtime", remainingMs, overtimeMs: -remainingMs, ...common, note: "past the estimate · overtime" };
+    const overtime = tg.overtime || 0;
+    const common = { basis: "predicted", target: tg, confidence: tg.confidence, estimate, range, stopped, adjustment, adjustments: t.adjustments?.length || 0, overtime, reset: overtime ? tg.reset : null };
+    return { mode: "countdown", remainingMs: Math.max(0, remainingMs), ...common, note: `${overtime ? "overtime · " : ""}${estimate ? `estimate · ${tg.confidence} confidence` : `${tg.confidence} confidence`}` };
   }
 
   agentEstimate(a, nowMs) {
@@ -621,7 +636,7 @@ export class Board {
       phase: field(phase.word, phase.basis, phase.note),
       game,
       // time LEFT only (design decision 2026-11-13); time spent stays in stopwatch data for estimation, never displayed
-      gameClock: game.mode === "countdown" || game.mode === "overtime" ? field(game.remainingMs, "predicted", game.note) : game.mode === "final" ? field(0, "observed", game.note) : field(null, "unavailable", game.note || ""),
+      gameClock: game.mode === "countdown" ? field(game.remainingMs, "predicted", game.note) : game.mode === "final" ? field(0, "observed", game.note) : field(null, "unavailable", game.note || ""),
       stopwatch: sw ? { state: sw.state, kind: sw.kind, since: sw.since != null ? new Date(sw.since).toISOString() : null, basis: sw.basis, activeMs: sw.activeMs, observedActiveMs: sw.observedActiveMs, waitingMs: sw.waitingMs, byKind: sw.byKind, pausedMs: sw.pausedMs, unknownMs: sw.unknownMs, wallMs: sw.wallMs } : null,
       etaV2: v2 ? { ...v2, displayMin: v2.remaining?.p50 != null ? Math.ceil(v2.remaining.p50 / 60000) : null } : null,
       shot,

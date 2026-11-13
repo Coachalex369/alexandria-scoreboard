@@ -162,7 +162,7 @@ test("AGENTS: main and subagents apart; missing stops become lost, not running; 
   s = b2.snapshot("sess-A", at(31)); assert.equal(s.session.status, "ended"); assert.equal(s.agents[0].state, "lost");
 });
 
-test("GAME CLOCK: unknown without history, a countdown when well supported, overtime once it expires; never time spent", () => {
+test("GAME CLOCK: unknown without history, a countdown when well supported, overtime resets and counts down; never time spent", () => {
   const b = new Board();
   b.apply(prompt(0)); b.apply(tool(30, "Read"));
   let s = b.snapshot("sess-A", at(31)); assert.equal(s.game.mode, "unknown"); assert.equal(s.game.basis, "unavailable"); assert.ok(s.stopwatch.activeMs > 0);
@@ -176,7 +176,7 @@ test("GAME CLOCK: unknown without history, a countdown when well supported, over
   {
     assert.ok(s.game.remainingMs > 3 * 60e3 && s.game.remainingMs < 5 * 60e3);
     for (let t = 90; t <= 600; t += 30) b2.apply(tool(t, "Edit"));
-    s = b2.snapshot("sess-A", at(601)); assert.equal(s.game.mode, "overtime", "the established countdown expired → overtime counts up"); assert.ok(s.game.overtimeMs > 0); assert.ok(s.stopwatch.activeMs >= 600e3 - 1e3);
+    s = b2.snapshot("sess-A", at(601)); assert.equal(s.game.mode, "countdown", "expired → OVERTIME lamp, reset, counting down again"); assert.ok(s.game.overtime >= 1); assert.ok(s.game.remainingMs > 0); assert.ok(s.stopwatch.activeMs >= 600e3 - 1e3);
   }
 });
 

@@ -6,6 +6,8 @@ import { AlertPolicy } from "./src/alerts.js";
 import { MatrixDisplay, fitNumber, fitClock } from "./src/digits.js";
 import { HornKit } from "./src/horn.js";
 import { tickerItems, tickerLine, staticPages, TickerScroller } from "./src/ticker.js";
+import { gameClockView, rangeWords } from "./src/clockView.js";
+import { stepsLeftPulse } from "./src/pulse.js";
 
 const $ = (id) => document.getElementById(id);
 const DEMOS = { "synthetic-multi-agent": "Demo A · synthetic multi-agent session (11 min)", "forge-demo-session": "Demo B · synthetic session (10 min, failing test then fix)" };
@@ -85,7 +87,8 @@ function updateTicker(s) {
   ticker.key = key;
   ticker.pages = ticker.reduced ? staticPages(items, 28) : null;
 }
-function tickerFrame(ts) { D.message.render(ticker.scroller.frame(ts, { paused: ticker.hover, reduced: ticker.reduced, pages: ticker.pages })); requestAnimationFrame(tickerFrame); }
+const stepsLeft = { lit: false, since: null };
+function tickerFrame(ts) { if (stepsLeft.lit && stepsLeft.since == null) stepsLeft.since = ts; if (stepsLeft.lit) D.guest.setDim(stepsLeftPulse(ts - stepsLeft.since, { reduced: ticker.reduced }) === "dim"); D.message.render(ticker.scroller.frame(ts, { paused: ticker.hover, reduced: ticker.reduced, pages: ticker.pages })); requestAnimationFrame(tickerFrame); }
 // Pause while the pointer is over the ticker or it has keyboard focus (it is focusable for that reason).
 { const box = $("dMessage").parentElement; let over = false, focused = false; const sync = () => { ticker.hover = over || focused; };
   box.tabIndex = 0;
@@ -109,10 +112,12 @@ function render(force = false) {
   D.home.render(fitNumber(s.wins.value, 3)); D.home.setDim(!s.session);
   // GUEST: declared remaining scope, or question marks when scope is unknown.
   const scopeUnknown = s.guest.basis === "unavailable";
-  D.guest.render(scopeUnknown ? "???" : fitNumber(s.guest.value, 3)); D.guest.setDim(scopeUnknown); D.guest.el.classList.toggle("qmark", scopeUnknown && !!s.task?.live);
-  const g = s.game; const gc = gameClockText(g);
-  D.clock.render(gc.text); D.clock.setDim(g.mode === "unknown" || g.mode === "final"); D.clock.setFlash(g.mode === "overtime"); D.clock.el.classList.toggle("qmark", g.mode === "unknown" && !!s.task?.live); lamp("lampHrs", gc.hours);
-  lamp("lampOT", g.mode === "overtime"); lamp("lampEst", (g.mode === "countdown" || g.mode === "overtime") && !!g.estimate);
+  // STEPS LEFT: the pulse (src/pulse.js) is applied by the animation frame; dark is steady.
+  D.guest.render(scopeUnknown ? "???" : fitNumber(s.guest.value, 3)); D.guest.el.classList.remove("qmark");
+  stepsLeft.lit = !scopeUnknown; if (!stepsLeft.lit) { stepsLeft.since = null; D.guest.setDim(true); } // the frame starts the cycle
+  const g = s.game; const gv = gameClockView(g);
+  D.clock.render(gv.text); D.clock.setDim(gv.dim); D.clock.setFlash(false); D.clock.el.classList.remove("qmark"); // the digits never blink
+  lamp("lampHrs", gv.lamps.hrs); lamp("lampOT", gv.lamps.overtime); lamp("lampEst", gv.lamps.est);
   D.fouls.render(fitNumber(s.fouls.value ?? 0, 2)); D.verified.render(fitNumber(s.verified.value, 2));
   D.period.render(fitNumber(s.period.value, 2)); D.period.setDim(s.period.basis === "unavailable");
   D.timeouts.render(fitNumber(s.timeouts.value, 2)); D.player.render(fitNumber(s.player.value, 2));
@@ -146,23 +151,15 @@ function render(force = false) {
   renderBench(s, force);
 }
 
-// Game clock = time LEFT, never time spent (design decision 2026-11-13). Counts down second by second (rounded up,
-// like a game clock: 0:00 only when the time is really out); the OVERTIME lamp lights and the digits count up from
-// 0:00 once it expires; 0:00 when the period is over; ??:?? when there is no estimate.
-function gameClockText(g) {
-  if (g.mode === "countdown") return fitClock(Math.ceil(g.remainingMs / 1000) * 1000);
-  if (g.mode === "overtime") { const m = Math.floor(g.overtimeMs / 60000); return { text: m < 10 ? "+" + fitClock(g.overtimeMs).text.trim().slice(-4) : `+${Math.min(999, m)}M`.slice(0, 5), hours: false }; }
-  if (g.mode === "final") return fitClock(0);
-  return { text: "??:??", hours: false };
-}
-const signed = (ms) => `${ms >= 0 ? "+" : "−"}${fitClock(Math.abs(ms)).text.trim()}`;
+// Game clock digits: src/clockView.js (time left only; at 0:00 OVERTIME lights and the clock resets and counts down).
+const shift = (ms) => `${fitClock(Math.abs(ms)).text.trim()} ${ms >= 0 ? "MORE" : "LESS"}`;
 function clockNote(s, g) {
   if (!s.task) return "NO PERIOD OBSERVED";
-  const counting = g.mode === "countdown" || g.mode === "overtime";
-  if (counting && g.adjustment) return `${g.adjustment.fromOvertime ? "CLOCK RESET" : "ADJUSTED " + signed(g.adjustment.deltaMs)} · ${String(g.adjustment.reason).toUpperCase().slice(0, 28)}`;
+  const counting = g.mode === "countdown";
+  if (counting && g.adjustment) return `${"ADJUSTED " + shift(g.adjustment.deltaMs)} · ${String(g.adjustment.reason).toUpperCase().slice(0, 28)}`;
   if (s.task.live && (s.waiting || g.stopped)) { const k = s.waiting?.kind || g.stopped.kind; const w = g.stopped?.state === "unknown" ? "NO ACTIVITY SEEN" : g.stopped?.state === "paused" ? "PAUSED" : WAIT_WORD[k] || String(k || "WAIT").toUpperCase(); return `CLOCK STOPPED · ${w}${k === "rate_limit" && s.rateLimit?.resetsAt ? " · RESETS " + hm(s.rateLimit.resetsAt) : ""}`; }
-  if (g.mode === "countdown") return g.estimate ? `ESTIMATE · ${minOf(g.range.loMs)}–${minOf(g.range.hiMs)} MIN · ${String(g.confidence || "low").toUpperCase()} CONF` : `TIME LEFT · ${String(g.confidence || "").toUpperCase()} CONFIDENCE`;
-  if (g.mode === "overtime") return `OVERTIME · ESTIMATE WAS ${minOf(g.target?.activeMs)} MIN`;
+  if (g.mode === "countdown" && g.overtime && !g.adjustment) return g.estimate ? `OVERTIME · ESTIMATE · ${rangeWords(g.range)}` : "OVERTIME · RE-ESTIMATED";
+  if (g.mode === "countdown") return g.estimate ? `ESTIMATE · ${rangeWords(g.range)} · ${String(g.confidence || "low").toUpperCase()} CONF` : `TIME LEFT · ${String(g.confidence || "").toUpperCase()} CONFIDENCE`;
   if (g.mode === "final") return "FINAL";
   return `TIME LEFT UNKNOWN · ${String(g.note || "").toUpperCase().slice(0, 34)}`;
 }
