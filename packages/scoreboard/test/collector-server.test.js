@@ -25,9 +25,9 @@ test("command signatures keep the executable and a plain subcommand only", () =>
   assert.equal(signature("git commit -m 'secret message'"), "git commit");
   assert.equal(signature("SECRET=abc node scripts/deploy.js --key xyz"), "node");
   assert.equal(signature('"C:/Program Files/Git/bin/git.exe" status'), "git status");
-  assert.equal(signature("cd C:/repo && npm run test:unit"), "npm run");
+  assert.equal(signature("cd C:/repo && npm run test:unit"), "npm run test:unit"); // 3.2.2: allowlisted script names are kept
   assert.equal(signature("curl https://user:pass@host/x"), "curl");
-  assert.equal(signature("user:token@host"), "user");
+  assert.equal(signature("user:token@host"), "cmd"); // 3.2.2: not an allowlisted executable
   assert.equal(signature("   "), null); assert.equal(signature(undefined), null);
   assert.equal(signature("python -I script.py"), "python");
 });

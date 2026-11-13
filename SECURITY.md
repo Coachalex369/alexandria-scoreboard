@@ -20,6 +20,36 @@ Include what you found, how to reproduce it, and the impact you expect. We aim t
 
 ## Advisories
 
+### The 3.2.1 fix was incomplete: here-doc content could still be recorded (fixed in Alexandria Protocol 3.2.2)
+
+- **Affected versions published here:** the Alexandria collector in Alexandria Protocol **3.1.1**, **3.2.0** and
+  **3.2.1**. The 3.2.1 fix below did not cover two cases.
+- **What still happened in 3.2.1:**
+  - a here-doc inside a double-quoted command substitution whose text contains an odd number of double quotes, for
+    example `git commit -m "$(cat <<'EOF' … EOF)"` with a `"` in the message (the way Claude Code writes commit
+    messages);
+  - a here-doc with a backslash-escaped delimiter (`<<\EOF`).
+
+  In both cases the collector could record the first words of lines of the written text in the `segs` field of its
+  log, as if they were command names.
+- **Exposure:** unchanged from the advisory below: the log (`~/.claude/eta/events.jsonl`) stays on your machine; neither
+  the collector nor the app transmits it.
+- **Fix in 3.2.2:** commands are read by a new context-aware scanner, and privacy no longer depends on that parsing being
+  exact. A recorded command signature now contains only allowlisted words: the program name from a list of known
+  executables, the second word from a list of permitted subcommands for that program, and a `run` script name from a
+  list of common script names. Anything else is written as `cmd`. When the app reads an existing log, signatures written
+  by older collectors pass through the same rules, so words recorded earlier are not shown. Names of MCP servers that
+  are not on a short list of public servers are written as `mcp__other__other`.
+
+What to do, two separate steps (the same as below):
+
+1. **Stop future recording: install the fixed collector** from this version
+   (`node tools/install-collector-v3.mjs --apply`). Installing it does **not** change anything already written to your
+   log.
+2. **Decide about the existing log.** Words recorded before the update remain in `~/.claude/eta/events.jsonl` until you
+   remove them (the app no longer displays them). Deleting the file clears them but also deletes all recorded activity
+   history; keeping it keeps your history and the recorded words, which never leave your machine.
+
 ### Here-doc content recorded as command signatures (fixed in Alexandria Protocol 3.2.1)
 
 - **Affected versions published here:** the Alexandria collector in Alexandria Protocol **3.1.1** and **3.2.0**.

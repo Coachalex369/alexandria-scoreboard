@@ -6,6 +6,9 @@ import { makeEvent, classification } from "../schema.js";
 import { stableId } from "../ids.js";
 import { classifyToolEvent } from "../../../taxonomy/src/index.js";
 import { testRunEvent } from "./testOutput.js";
+// 3.2.2: records written by older collectors pass through the same allowlists as the collector, so a stored signature
+// or MCP tool name never reaches an event unredacted.
+import { sanitizeSignature, mcpTool } from "../../../../collector/eta-hook.mjs";
 
 const KIND = { SessionStart: "session.start", SessionEnd: "session.end", UserPromptSubmit: "prompt.submit", Stop: "turn.stop", PostToolUse: "tool.result", PostToolUseFailure: "tool.failure", SubagentStart: "agent.start", SubagentStop: "agent.stop", Notification: "notification", PreToolUse: "tool.call",
   // collector v3
@@ -31,11 +34,11 @@ export function parseHookLog(text, { file = "events.jsonl", lineOffset = 0 } = {
     const payload = {};
     let cls = [];
     if (kind === "tool.result" || kind === "tool.failure") {
-      payload.tool = r.tool; if (r.failed) payload.failed = true;
+      payload.tool = mcpTool(r.tool); if (r.failed) payload.failed = true;
       if (r.subType) { payload.subagentType = r.subType; payload.subagentModel = r.subModel; }
-      if (r.sig) payload.signature = r.sig; // collector v2: redacted command signature (first token + plain subcommand), never the command
-      if (Array.isArray(r.segs) && r.segs.length) payload.signatures = r.segs.filter((x) => typeof x === "string").slice(0, 8); // collector v4: per-segment signatures
-      cls = classifyToolEvent({ toolName: r.tool, signature: r.sig || null });
+      if (r.sig) payload.signature = sanitizeSignature(r.sig); // collector v2: redacted command signature (first token + plain subcommand), never the command
+      if (Array.isArray(r.segs) && r.segs.length) payload.signatures = r.segs.filter((x) => typeof x === "string").slice(0, 8).map(sanitizeSignature); // collector v4: per-segment signatures
+      cls = classifyToolEvent({ toolName: mcpTool(r.tool), signature: r.sig ? sanitizeSignature(r.sig) : null });
     }
     if (kind === "prompt.submit") payload.promptLen = r.promptLen ?? null;
     if (kind === "notification") payload.kind = r.kind;
@@ -43,7 +46,7 @@ export function parseHookLog(text, { file = "events.jsonl", lineOffset = 0 } = {
     if (kind === "session.start") { payload.sourceOfStart = r.source; if (r.model) payload.model = r.model; }
     if (kind === "tool.failure" && r.interrupted) payload.interrupted = true;
     if (kind === "api.error") { payload.error = r.error || "unknown"; if (r.status) payload.status = r.status; payload.endsTurn = true; }
-    if (kind === "permission.request" || kind === "permission.denied") payload.tool = r.tool;
+    if (kind === "permission.request" || kind === "permission.denied") payload.tool = mcpTool(r.tool);
     if (kind === "context.compact") { payload.phase = r.ev === "PreCompact" ? "begin" : "end"; if (r.trigger) payload.trigger = r.trigger; }
     if (kind === "model.switch") { payload.fromModel = r.fromModel || null; payload.toModel = r.toModel || null; }
     if (r.effort) payload.effort = r.effort;
@@ -71,7 +74,7 @@ export function parseHookLog(text, { file = "events.jsonl", lineOffset = 0 } = {
     // collector v2: a test run recognised in a tool's output (counts only) becomes an observed test.run event.
     if (r.tests && (kind === "tool.result" || kind === "tool.failure")) {
       const result = { framework: r.tests.framework || "unknown", passed: r.tests.passed ?? null, failed: r.tests.failed ?? null, skipped: r.tests.skipped ?? null, durationMs: r.tests.durationMs ?? null, exitCode: null, ok: r.tests.ok === true };
-      out.push(testRunEvent({ ts: r.ts, session, actor, parent: parentOrUndef, result, label: r.sig || r.tool, source: "tests" }));
+      out.push(testRunEvent({ ts: r.ts, session, actor, parent: parentOrUndef, result, label: (r.sig && sanitizeSignature(r.sig)) || mcpTool(r.tool), source: "tests" }));
     }
   });
   return out;

@@ -1,13 +1,13 @@
 {
  "name": "alexandria-protocol",
- "version": "3.2.1",
+ "version": "3.2.2",
  "collector": 4,
  "files": {
-  "collector/eta-hook.mjs": "83a421a7c943869efba8a2da5a17ef5ac0ba529776eaa3c654d505ed1866055f",
+  "collector/eta-hook.mjs": "0e0c4567b87b00a74f9ad823a54160e776cd234bcfeadc512abf2aee10cdda69",
   "collector/hooks.settings-fragment.json": "beb63c3a73cf12289e82eca9381cff26472b31f3497858b004adfc730afe3b0c",
   "packages/event-engine/bin/engine.js": "2f198f942bbc222f1a6dd757e7d7a912506f8d172cf56079fbf35183479e27f5",
   "packages/event-engine/package.json": "cc57b10c582942d07c7923c5f38eace19a6304e34a83e46ff8bb197fef70ee68",
-  "packages/event-engine/src/adapters/claudeHooks.js": "6d7fa417524b8dde6384454ad363955c53938007e3007c8d441fae4bee115828",
+  "packages/event-engine/src/adapters/claudeHooks.js": "4e9f8605937c5746453c29a3eef24f52eeb2f03d482b72db133a53383560f6c2",
   "packages/event-engine/src/adapters/claudeTranscript.js": "1cfcec32559af35c31c7c10f809773b520e249492fee98f3417593250227564c",
   "packages/event-engine/src/adapters/git.js": "08a7b7cda4101d030bb50899afeaf1bce5a7164d887efcd23e7fe5c391e439ed",
   "packages/event-engine/src/adapters/testOutput.js": "8261cdefb0f5219b6af2cf9e1c163e779c9df8d05a7a541f404510cf030f9eb4",
@@ -30,6 +30,6 @@
   "tools/install-collector-v3.mjs": "b76b6fc26e3924eb072cd29889bb7bc631aaf0ea1041410c66a66371779bfee2",
   "fixtures/hook-lines.jsonl": "7bd8401f9a7117d27f57f7ad3396572769548e1a1c1b9e38ecc1fce80cff045c"
  },
- "syncedAt": "2026-11-12T20:52:41.107Z",
+ "syncedAt": "2026-11-13T03:15:35.185Z",
  "source": "alexandria-protocol"
 }

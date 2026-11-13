@@ -12,8 +12,8 @@ const cases = [
   [`cat > a <<A && cat > b <<B\n${M} a\nA\n${M} b\nB\nnpm test`, ["cat", "cat", "npm test"]],
   [`cat > f <<EOF\n${M} never terminated\nnpm test`, ["cat"]],
   [`grep x <<< "${M}" && npm test`, ["grep", "npm test"]],
-  [`$t = @'\n${M} don't\n'@\nnpm test`, ["$t", "npm test"]],
-  [`$t = @"\n${M} "quoted"\n"@\ngit status`, ["$t", "git status"]],
+  [`$t = @'\n${M} don't\n'@\nnpm test`, ["cmd", "npm test"]],
+  [`$t = @"\n${M} "quoted"\n"@\ngit status`, ["cmd", "git status"]],
 ];
 
 test("here-doc and here-string bodies are skipped; the command after them is still recognised; nothing of the body is recorded", () => {
