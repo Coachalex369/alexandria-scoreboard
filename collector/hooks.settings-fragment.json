@@ -164,6 +164,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion|ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"~/.claude/eta/eta-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

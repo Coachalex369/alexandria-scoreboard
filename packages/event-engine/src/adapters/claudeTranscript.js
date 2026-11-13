@@ -21,6 +21,7 @@ import os from "node:os";
 import { makeEvent } from "../schema.js";
 import { stableId } from "../ids.js";
 import { classifyToolEvent } from "../../../taxonomy/src/index.js";
+import { mcpTool } from "../../../../collector/eta-hook.mjs"; // 3.3.2: MCP names through the same allowlist as hook records
 
 const SKIP_PROMPT = /^<system-reminder>|^Base directory for this skill|^\[Request interrupted|^<local-command|^<command-name>|^<agent-message|^\[Subagent hand-back|^<task-notification>|^\[SYSTEM NOTIFICATION/;
 const OWNER_TOOLS = new Set(["AskUserQuestion", "ExitPlanMode"]);
@@ -108,14 +109,14 @@ export function parseTranscript(text, { sessionId = null, project = null, file =
         state.toolUse.delete(b.tool_use_id);
         const gap = Math.max(0, Date.parse(ts) - Date.parse(tu.ts));
         const ownerApproved = o.permissionDecision?.source === "user";
-        const payload = { tool: tu.name || "unknown" };
+        const payload = { tool: mcpTool(tu.name) || "unknown" };
         if (b.is_error === true) payload.failed = true;
         if (tu.name === "Agent" && tu.subType) { payload.subagentType = String(tu.subType).slice(0, 40); if (typeof tu.subModel === "string") payload.subagentModel = tu.subModel.slice(0, 40); }
         // Waiting the owner caused: the whole use→result gap of an owner tool, or of a call the owner approved by hand
         // (execution and approval cannot be separated in the transcript, so the conservative choice is "waiting").
         if (OWNER_TOOLS.has(tu.name)) payload.ownerWaitMs = gap;
         else if (ownerApproved) { payload.approvalWaitMs = gap; payload.ownerApproved = true; }
-        out.push(makeEvent({ id: stableId("tx-tool", sid, b.tool_use_id), ts, source: "claude-transcript", kind: b.is_error === true ? "tool.failure" : "tool.result", session, actor: { type: "main" }, parent: { toolUseId: b.tool_use_id }, payload, classification: classifyToolEvent({ toolName: tu.name, signature: null }), durationMs: payload.ownerWaitMs != null || payload.approvalWaitMs != null ? 0 : gap, provenance: prov() }));
+        out.push(makeEvent({ id: stableId("tx-tool", sid, b.tool_use_id), ts, source: "claude-transcript", kind: b.is_error === true ? "tool.failure" : "tool.result", session, actor: { type: "main" }, parent: { toolUseId: b.tool_use_id }, payload, classification: classifyToolEvent({ toolName: mcpTool(tu.name), signature: null }), durationMs: payload.ownerWaitMs != null || payload.approvalWaitMs != null ? 0 : gap, provenance: prov() }));
       }
     }
   }
@@ -154,7 +155,7 @@ export function parseSubagentTranscript(text, { sessionId, project = null, agent
       for (const b of o.message.content) {
         if (b?.type !== "tool_result" || !toolUse.has(b.tool_use_id)) continue;
         const tu = toolUse.get(b.tool_use_id); toolUse.delete(b.tool_use_id); calls++;
-        out.push(makeEvent({ id: stableId("tx-atool", sessionId, agentId, b.tool_use_id), ts, source: "claude-transcript", kind: b.is_error === true ? "tool.failure" : "tool.result", session, actor: actor(), parent: { toolUseId: b.tool_use_id, agentId }, payload: { tool: tu.name || "unknown", ...(b.is_error === true ? { failed: true } : {}) }, classification: classifyToolEvent({ toolName: tu.name, signature: null }), durationMs: Math.max(0, Date.parse(ts) - Date.parse(tu.ts)), provenance: { observed: true, adapter: "claude-transcript@1", confidence: 1, raw } }));
+        out.push(makeEvent({ id: stableId("tx-atool", sessionId, agentId, b.tool_use_id), ts, source: "claude-transcript", kind: b.is_error === true ? "tool.failure" : "tool.result", session, actor: actor(), parent: { toolUseId: b.tool_use_id, agentId }, payload: { tool: mcpTool(tu.name) || "unknown", ...(b.is_error === true ? { failed: true } : {}) }, classification: classifyToolEvent({ toolName: mcpTool(tu.name), signature: null }), durationMs: Math.max(0, Date.parse(ts) - Date.parse(tu.ts)), provenance: { observed: true, adapter: "claude-transcript@1", confidence: 1, raw } }));
       }
     }
   }

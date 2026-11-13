@@ -36,7 +36,10 @@ const P = {
   fragment: path.join(ROOT, "collector", "hooks.settings-fragment.json"),
 };
 export const BASE_EVENTS = ["SessionStart", "UserPromptSubmit", "PostToolUse", "PostToolUseFailure", "SubagentStart", "SubagentStop", "Stop", "Notification", "SessionEnd"];
-export const NEW_EVENTS = ["StopFailure", "PermissionRequest", "PermissionDenied", "PreCompact", "PostCompact", "PostModelSwitch"];
+export const NEW_EVENTS = ["StopFailure", "PermissionRequest", "PermissionDenied", "PreCompact", "PostCompact", "PostModelSwitch", "PreToolUse"];
+// Events registered for some tools only. PreToolUse runs before every matching call, so it is limited to the two tools
+// whose opening means "the owner is being asked" (protocol 3.3.0, collector v5); every other tool stays unhooked.
+export const EVENT_MATCHERS = { PreToolUse: "AskUserQuestion|ExitPlanMode" };
 export const ALL_EVENTS = [...BASE_EVENTS, ...NEW_EVENTS];
 
 const isCollector = (h) => /eta-hook\.mjs/.test(h?.command || "");
@@ -59,16 +62,23 @@ export function mergeHooks(settings, events, homeDir = os.homedir()) {
   let template = s.hooks.Stop?.find?.((g) => g?.hooks?.some(isCollector));
   if (!template) for (const groups of Object.values(s.hooks)) { template = Array.isArray(groups) ? groups.find((g) => g?.hooks?.some(isCollector)) : undefined; if (template) break; }
   const firstTime = !template;
+  // Only the collector's own entry is copied: other hooks the owner keeps in the same group never spread to new events.
   if (firstTime) template = { hooks: [{ type: "command", command: collectorCommand(homeDir), timeout: 5 }] };
+  else template = { hooks: [JSON.parse(JSON.stringify(template.hooks.find(isCollector)))] };
   const list = events || (firstTime ? ALL_EVENTS : NEW_EVENTS);
   const added = [];
   for (const ev of list) {
     const groups = s.hooks[ev] || [];
     if (hasCollector(groups)) continue; // already there
-    s.hooks[ev] = [...groups, JSON.parse(JSON.stringify(template))];
+    const group = JSON.parse(JSON.stringify(template)); delete group.matcher;
+    if (EVENT_MATCHERS[ev]) group.matcher = EVENT_MATCHERS[ev];
+    s.hooks[ev] = [...groups, group];
     added.push(ev);
   }
-  return { settings: s, added, firstTime };
+  // A collector already registered for a matcher event WITHOUT the matcher would log every tool call: reported, not
+  // rewritten (the owner decides; this installer never edits existing hook groups).
+  const warnings = Object.keys(EVENT_MATCHERS).filter((ev) => (s.hooks[ev] || []).some((g) => g?.hooks?.some(isCollector) && g.matcher !== EVENT_MATCHERS[ev])).map((ev) => `${ev} already runs the collector without the matcher "${EVENT_MATCHERS[ev]}"; edit that group by hand to limit it`);
+  return { settings: s, added, firstTime, warnings };
 }
 
 function probe(hookFile) {
@@ -78,6 +88,8 @@ function probe(hookFile) {
     { hook_event_name: "StopFailure", session_id: "probe", error: "rate_limit", error_details: "429 x", last_assistant_message: SECRET },
     { hook_event_name: "PermissionRequest", session_id: "probe", tool_name: "Bash", tool_input: { command: SECRET } },
     { hook_event_name: "PostToolUse", session_id: "probe", tool_name: "Bash", tool_use_id: "t", duration_ms: 5, tool_input: { command: `echo ${SECRET}` }, tool_response: { stdout: SECRET } },
+    { hook_event_name: "PreToolUse", session_id: "probe", tool_name: "AskUserQuestion", tool_use_id: "q", tool_input: { questions: [{ question: SECRET }] } },
+    { hook_event_name: "PostToolUse", session_id: "probe", tool_name: "Edit", tool_use_id: "e", tool_input: { file_path: `C:/${SECRET}/x.md`, old_string: SECRET, new_string: SECRET } },
   ];
   try {
     for (const inp of inputs) {
@@ -125,7 +137,8 @@ function main() {
   const apply = argv.includes("--apply"), force = argv.includes("--force");
   for (const f of [P.source, P.fragment]) if (!fs.existsSync(f)) throw new Error(`missing: ${f}`);
   const { text: settingsText, json: settingsJson } = readSettings();
-  const { settings, added, firstTime } = mergeHooks(settingsJson, undefined, HOME);
+  const { settings, added, firstTime, warnings } = mergeHooks(settingsJson, undefined, HOME);
+  for (const w of warnings) console.log(`warning: ${w}`);
   const sourceText = fs.readFileSync(P.source, "utf8");
   const hookText = fs.existsSync(P.hook) ? fs.readFileSync(P.hook, "utf8") : null;
   const newV = collectorRecordVersion(sourceText), oldV = collectorRecordVersion(hookText);

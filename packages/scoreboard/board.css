@@ -189,3 +189,13 @@ table.grid tr.main td { color: #fff; }
   .basis-row { flex-wrap: wrap; justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .matrix.flash .mx-char i.on, .lamp.blink.on i, .signal[data-state="nosignal"] i, .state.waiting i { animation: none; } }
+
+/* session navigation and attention from other sessions (2026-11-12) */
+.sessnav { display: flex; gap: 4px; align-items: center; }
+.sessnav .chip[aria-pressed="true"] { background: #2b3a1a; border-color: #8a3; }
+.chip.attn { background: #4a1414; border-color: #e33; color: #ffd2c8; animation: blink 1.2s steps(2) infinite; }
+.matrix.qmark .mx-char i.on { animation: flashdots 1.6s steps(2) infinite; opacity: .7; }
+.tier { font-size: 11px; padding: 1px 6px; border-radius: 3px; border: 1px solid #444; }
+.tier.confirmed, .tier.verified { border-color: #3a7; color: #9fe8b0; } .tier.unverified { border-color: #a83; color: #ffd28a; } .tier.probable { border-color: #666; color: #aaa; }
+.chk.valid { color: #9fe8b0; } .chk.stale { color: #ffd28a; } .chk.failed { color: #ff9b8a; }
+@media (prefers-reduced-motion: reduce) { .chip.attn, .matrix.qmark .mx-char i.on { animation: none; } }

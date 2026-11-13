@@ -5,6 +5,8 @@
 //   node tools/sb-mark.js start "Build the roster panel" [--id task-x] [--minutes 25 --p90 40 --calls 60]
 //   node tools/sb-mark.js estimate --minutes 25 [--p90 40] [--calls 60]        (for the current task)
 //   node tools/sb-mark.js end                                                  (completes the current task → horn)
+//   node tools/sb-mark.js end --outcome failed                                 (ended, NOT complete: no horn, no win;
+//        also fail/failure/error/abandoned/canceled/cancelled/aborted/incomplete/not complete/unfinished/blocked/skipped)
 //   node tools/sb-mark.js tests -- npm test                                    (runs the command, records pass/fail counts)
 //   node tools/sb-mark.js pause [--reason "lunch"] | resume                 (declared pause: the stopwatch excludes it)
 //   node tools/sb-mark.js wait ci|deploy|review|external | waited             (declared external wait, excluded from active time)
@@ -59,7 +61,7 @@ function current() { try { return JSON.parse(fs.readFileSync(currentFile, "utf8"
 // The server appends accepted events to the marks file itself; only write the file directly when it is not running.
 async function emit(events) {
   let delivered = false;
-  try { const r = await fetch(`${serverUrl}/api/ingest`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(events), signal: AbortSignal.timeout(1500) }); if (r.ok) delivered = true; else console.error(`server declined: ${await r.text()}`); } catch { /* server not running */ }
+  try { const r = await fetch(`${serverUrl}/api/ingest`, { method: "POST", headers: { "content-type": "application/json", "x-alexandria-ingest": "1" }, body: JSON.stringify(events), signal: AbortSignal.timeout(1500) }); if (r.ok) delivered = true; else console.error(`server declined: ${await r.text()}`); } catch { /* server not running */ }
   if (!delivered) fs.appendFileSync(marksFile, events.map((e) => JSON.stringify(e)).join("\n") + "\n");
   for (const e of events) console.log(`${e.kind}  ${e.task?.id || ""}  ${e.task?.title || ""} ${e.payload ? JSON.stringify(e.payload) : ""}`);
 }

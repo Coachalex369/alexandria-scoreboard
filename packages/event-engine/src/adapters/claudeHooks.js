@@ -8,7 +8,7 @@ import { classifyToolEvent } from "../../../taxonomy/src/index.js";
 import { testRunEvent } from "./testOutput.js";
 // 3.2.2: records written by older collectors pass through the same allowlists as the collector, so a stored signature
 // or MCP tool name never reaches an event unredacted.
-import { sanitizeSignature, mcpTool } from "../../../../collector/eta-hook.mjs";
+import { sanitizeSignature, mcpTool, KNOWN_EXTS } from "../../../../collector/eta-hook.mjs";
 
 const KIND = { SessionStart: "session.start", SessionEnd: "session.end", UserPromptSubmit: "prompt.submit", Stop: "turn.stop", PostToolUse: "tool.result", PostToolUseFailure: "tool.failure", SubagentStart: "agent.start", SubagentStop: "agent.stop", Notification: "notification", PreToolUse: "tool.call",
   // collector v3
@@ -46,12 +46,13 @@ export function parseHookLog(text, { file = "events.jsonl", lineOffset = 0 } = {
     if (kind === "session.start") { payload.sourceOfStart = r.source; if (r.model) payload.model = r.model; }
     if (kind === "tool.failure" && r.interrupted) payload.interrupted = true;
     if (kind === "api.error") { payload.error = r.error || "unknown"; if (r.status) payload.status = r.status; payload.endsTurn = true; }
-    if (kind === "permission.request" || kind === "permission.denied") payload.tool = mcpTool(r.tool);
+    if (kind === "permission.request" || kind === "permission.denied" || kind === "tool.call") payload.tool = mcpTool(r.tool); // v5: tool.call = an owner question / plan approval opening; 3.2.2: MCP names allowlisted
     if (kind === "context.compact") { payload.phase = r.ev === "PreCompact" ? "begin" : "end"; if (r.trigger) payload.trigger = r.trigger; }
     if (kind === "model.switch") { payload.fromModel = r.fromModel || null; payload.toModel = r.toModel || null; }
     if (r.effort) payload.effort = r.effort;
     if (kind === "session.end") payload.reason = r.reason;
     if (kind === "agent.start") { payload.agentType = r.agentType; if (r.agentType) agentModel.set(r.agent, { type: r.agentType, model: agentModel.get(r.agent)?.model }); }
+    if (typeof r.ext === "string" && /^\.[a-z0-9]{1,7}$/.test(r.ext)) payload.ext = KNOWN_EXTS.has(r.ext) ? r.ext : ".other"; // collector v5: edited file extension only; 3.3.2: same list as the collector
     if (r.perm) payload.permissionMode = r.perm;
     payload.hookMs = r.hookMs;
     const session = { id: r.sid || "unknown", project: r.proj || null };

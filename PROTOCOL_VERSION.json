@@ -1,14 +1,14 @@
 {
  "name": "alexandria-protocol",
- "version": "3.2.2",
- "collector": 4,
+ "version": "3.3.2",
+ "collector": 5,
  "files": {
-  "collector/eta-hook.mjs": "0e0c4567b87b00a74f9ad823a54160e776cd234bcfeadc512abf2aee10cdda69",
-  "collector/hooks.settings-fragment.json": "beb63c3a73cf12289e82eca9381cff26472b31f3497858b004adfc730afe3b0c",
+  "collector/eta-hook.mjs": "e7f460af1c0b4231dfdaf3db1587ca1d9a149e11e07ba8827b8f2de1c9184d36",
+  "collector/hooks.settings-fragment.json": "c8a325254a4d5a099c43d39eac9d1e0a657caa60db95375e910616988bac1714",
   "packages/event-engine/bin/engine.js": "2f198f942bbc222f1a6dd757e7d7a912506f8d172cf56079fbf35183479e27f5",
   "packages/event-engine/package.json": "cc57b10c582942d07c7923c5f38eace19a6304e34a83e46ff8bb197fef70ee68",
-  "packages/event-engine/src/adapters/claudeHooks.js": "4e9f8605937c5746453c29a3eef24f52eeb2f03d482b72db133a53383560f6c2",
-  "packages/event-engine/src/adapters/claudeTranscript.js": "1cfcec32559af35c31c7c10f809773b520e249492fee98f3417593250227564c",
+  "packages/event-engine/src/adapters/claudeHooks.js": "d8c3e49be4a34eb62069739fe351e0da947cf2355fc915ba4127f8f01906bd99",
+  "packages/event-engine/src/adapters/claudeTranscript.js": "ed4236944c88a972b4f98a102cbe44023912250b5fc7e75a29b076dd50946a27",
   "packages/event-engine/src/adapters/git.js": "08a7b7cda4101d030bb50899afeaf1bce5a7164d887efcd23e7fe5c391e439ed",
   "packages/event-engine/src/adapters/testOutput.js": "8261cdefb0f5219b6af2cf9e1c163e779c9df8d05a7a541f404510cf030f9eb4",
   "packages/event-engine/src/ids.js": "2853b995e22da369af0579caa3d01d147ac9e4e27aad2d17e12ce3229a9ab585",
@@ -27,9 +27,9 @@
   "packages/taxonomy/taxonomy.json": "dc232183fcd5b1e572ba95144abd63df6705640cea32f7e9d3739743b344dd7b",
   "packages/taxonomy/test/codeStructure.test.js": "de145ab9504af246e2d6a92747ec6fc7ef088bf711281e895f3b5f3208eb68c1",
   "packages/taxonomy/test/taxonomy.test.js": "d2082510d8ca4e5132127319ce6bf7f362dee08200edbe151038b7d9622a2b57",
-  "tools/install-collector-v3.mjs": "b76b6fc26e3924eb072cd29889bb7bc631aaf0ea1041410c66a66371779bfee2",
+  "tools/install-collector-v3.mjs": "e53184f4ce595dff61e9f05a7306cbd0c8f1549af085d8ddcff3be24f3c32cb0",
   "fixtures/hook-lines.jsonl": "7bd8401f9a7117d27f57f7ad3396572769548e1a1c1b9e38ecc1fce80cff045c"
  },
- "syncedAt": "2026-11-13T03:15:35.185Z",
+ "syncedAt": "2026-11-13T20:02:02.242Z",
  "source": "alexandria-protocol"
 }

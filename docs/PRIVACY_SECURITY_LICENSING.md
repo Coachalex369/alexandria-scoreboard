@@ -10,6 +10,13 @@
   rejects payload keys that would carry content; the hook logger was verified with marker strings.
 - **Storage:** JSONL files under the user's home (`~/.claude/eta/events.jsonl`, repo `demo/recordings/`).
   Nothing is sent anywhere. Sharing a recording is a deliberate file hand-off by the user.
+- **Logger v5 (2026-11-12)** adds the lowercased extension of an edited file (`.md`, never the name or path) and
+  registers PreToolUse only for AskUserQuestion/ExitPlanMode (tool name and id only).
+- **Session facts (2026-11-12).** The local server reads Claude Code transcripts and `~/.claude/sessions/*.json` in
+  memory to name sessions (Claude Code's own session title or a name the owner gave it), find the git root of the
+  working directory, notice questions as they open and decide whether a reply ends with a question. Only the repo
+  folder name, a short path hash, the branch, the label, tool names/ids and yes/no flags leave that code; the label is
+  shown in the local UI and never written to the ledger or any file.
 - **Identifier names from Tree-sitter** (function/class/test names) are the one semi-sensitive item; they
   are needed for the Workflow view. A per-project `redactNames` option is an easy addition if required.
 

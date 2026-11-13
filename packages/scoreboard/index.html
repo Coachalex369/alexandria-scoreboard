@@ -20,6 +20,12 @@
       <span id="demoPos" class="mono"></span>
     </span>
   </div>
+  <div class="sessnav" role="group" aria-label="Session">
+    <button id="sessPrev" class="chip" title="Previous active session (←)">◀</button>
+    <button id="sessPin" class="chip" aria-pressed="false" title="Pinned: the board stays on this session. Auto: follows the most recently active session (P)">AUTO</button>
+    <button id="sessNext" class="chip" title="Next active session (→)">▶</button>
+    <button id="otherAttention" class="chip attn" hidden title="Another session is waiting for you: click to show it"></button>
+  </div>
   <div class="controls">
     <span id="signal" class="signal" data-state="connecting"><i></i><b>CONNECTING</b></span>
     <button id="soundEnable" class="chip" title="Browsers need one click before sound can play">🔈 enable sound</button>
@@ -38,9 +44,9 @@
 
     <div class="row row-top">
       <div class="block home">
-        <div class="label">HOME</div>
+        <div class="label">STEPS DONE</div>
         <div class="window"><div id="dHome" class="big"></div></div>
-        <div class="sub"><span id="homeNote">DONE · TOOL CALLS</span></div>
+        <div class="sub"><span id="homeNote">WINS · TEAM SCORE</span></div>
         <div class="arrow-wrap"><span id="arrowHome" class="arrow left" title="main thread active"></span><span class="arrow-label">MAIN</span></div>
       </div>
       <div class="block clock">
@@ -51,11 +57,13 @@
           <span id="lampRun" class="lamp green"><i></i>RUNNING</span>
           <span id="lampWait" class="lamp red"><i></i>TIMEOUT</span>
           <span id="lampIdle" class="lamp amber"><i></i>IDLE</span>
+          <span id="lampEst" class="lamp amber" title="low-confidence estimate: the note shows the range"><i></i>EST</span>
+          <span id="lampOT" class="lamp red"><i></i>OVERTIME</span>
         </div>
-        <div class="sub"><span id="clockNote">WORK TIME · WAITS EXCLUDED</span></div>
+        <div class="sub"><span id="clockNote">TIME LEFT</span></div>
       </div>
       <div class="block guest">
-        <div class="label">GUEST</div>
+        <div class="label">STEPS LEFT</div>
         <div class="window"><div id="dGuest" class="big"></div></div>
         <div class="sub"><span id="guestNote">REMAINING · SCOPE UNKNOWN</span></div>
         <div class="arrow-wrap right"><span class="arrow-label">AGENTS</span><span id="arrowGuest" class="arrow right" title="subagent active"></span></div>
@@ -64,9 +72,9 @@
 
     <div class="row row-mid">
       <div class="mini">
-        <div class="label">FOULS</div>
+        <div class="label">ISSUES</div>
         <div class="window amber"><div id="dFouls" class="small"></div></div>
-        <span id="lampBonus" class="lamp red under"><i></i>BONUS</span>
+        <span id="lampBonus" class="lamp red under"><i></i>WATCH</span>
       </div>
       <div class="mini">
         <div class="label">VERIFIED</div>
@@ -74,29 +82,29 @@
         <span class="lamp-row"><span id="lampPass" class="lamp green"><i></i>PASS</span><span id="lampFail" class="lamp red"><i></i>FAIL</span></span>
       </div>
       <div class="mini period">
-        <div class="label">PERIOD</div>
+        <div class="label">TURN</div>
         <div class="window amber"><div id="dPeriod" class="small"></div></div>
         <span id="periodNote" class="tiny">TURN</span>
       </div>
       <div class="mini shot">
-        <div class="label">SHOT CLOCK</div>
+        <div class="label">YOUR MOVE</div>
         <div class="window"><div id="dShot" class="small"></div></div>
-        <span id="shotNote" class="tiny">MIN LEFT · NO ESTIMATE</span>
+        <span id="shotNote" class="tiny"></span>
       </div>
       <div class="mini">
-        <div class="label">TIMEOUTS</div>
+        <div class="label">CHECK-INS</div>
         <div class="window amber"><div id="dTimeouts" class="small"></div></div>
-        <span id="lampTO" class="lamp red under"><i></i>WAITING</span>
+        <span id="lampTO" class="lamp red under"><i></i>NEEDS YOU</span>
       </div>
       <div class="mini">
-        <div class="label">PLAYER</div>
+        <div class="label">AGENTS</div>
         <div class="window amber"><div id="dPlayer" class="small"></div></div>
         <span id="playerNote" class="tiny">AGENTS RUNNING</span>
       </div>
     </div>
 
     <div class="row row-msg">
-      <div class="window wide amber"><div id="dMessage" class="msg"></div></div>
+      <div class="window wide amber" role="status" aria-label="Task ticker"><div id="dMessage" class="msg"></div></div>
     </div>
     <div id="swRow" class="sw-row" title="Stopwatch &amp; ETA v0.2: active time excludes every wait; the ETA is a calibrated range of remaining active time, or says why it has none"></div>
     <div class="basis-row">
@@ -112,12 +120,14 @@
       <button class="tab" role="tab" data-tab="roster" aria-selected="true">ROSTER</button>
       <button class="tab" role="tab" data-tab="events" aria-selected="false">EVENTS</button>
       <button class="tab" role="tab" data-tab="predictions" aria-selected="false">PREDICTIONS</button>
+      <button class="tab" role="tab" data-tab="score" aria-selected="false">SCORE SHEET</button>
       <button class="tab" role="tab" data-tab="sessions" aria-selected="false">SESSIONS</button>
       <span id="benchStatus" class="bench-status mono"></span>
     </nav>
     <div id="tab-roster" class="pane" role="tabpanel"></div>
     <div id="tab-events" class="pane" role="tabpanel" hidden></div>
     <div id="tab-predictions" class="pane" role="tabpanel" hidden></div>
+    <div id="tab-score" class="pane" role="tabpanel" hidden></div>
     <div id="tab-sessions" class="pane" role="tabpanel" hidden></div>
   </section>
 </main>

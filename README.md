@@ -1,8 +1,8 @@
 # Alexandria Scoreboard
 
 A free, local companion for [Claude Code](https://claude.com/claude-code) by Alexandria Ltd. It shows a vintage
-basketball scoreboard of what your Claude Code sessions and subagents are doing, how long the work has *actually*
-taken (waiting time excluded), and a calibrated range for how long it will take.
+basketball scoreboard of what your Claude Code sessions and subagents are doing, how much time is *left* (estimated from
+your own history, waiting excluded), and how long Claude has been waiting on you.
 
 Long agent runs are mostly invisible: you do not know whether Claude is working, waiting for you, rate limited, or
 stuck, and a naive elapsed-time counter includes all the waiting. Alexandria Scoreboard makes that visible, and keeps
@@ -15,8 +15,10 @@ everything on your machine.
 
 ## Features
 
-- **Live board.** Tool calls (HOME), turns (PERIOD), active-time GAME CLOCK, SHOT CLOCK with an ETA range, FOULS
-  (failures), VERIFIED (passing tests, commits), TIMEOUTS (waits), PLAYER (agents running) and a phase message.
+- **Live board.** STEPS DONE (the team's completed work), STEPS LEFT (declared scope), a GAME CLOCK that counts
+  down the estimated time left (overtime counts up), YOUR MOVE (how long Claude has been waiting on you), TURN, ISSUES
+  (unresolved problems), VERIFIED (currently valid checks), CHECK-INS (requests waiting for you), AGENTS, and a ticker
+  of the current task in plain English.
 - **Stopwatch that excludes waiting.** Time is partitioned into active, waiting (approval, question, the user's move,
   rate limit, API error, external), paused and unknown, and every figure carries its basis (observed, inferred or
   declared). See [docs/STOPWATCH_ETA_V02.md](docs/STOPWATCH_ETA_V02.md).

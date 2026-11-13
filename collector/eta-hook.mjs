@@ -18,8 +18,12 @@ const TEST_SIG = /^(npm (test|run test[\w:-]*)|npx (jest|vitest|mocha|tap)|node 
 // 3.2.2: MCP server names are user-chosen and can identify clients: written only on an exact allowlist match.
 export const MCP_SERVER_ALLOWLIST = new Set(['claude-in-chrome', 'playwright', 'github', 'filesystem', 'fetch', 'context7']);
 export function mcpTool(name) {
-  if (typeof name !== 'string' || !name.startsWith('mcp__')) return name;
-  const m = /^mcp__(.+?)__(.+)$/.exec(name);
+  if (name == null) return name;
+  if (typeof name !== 'string') return null;                 // 3.3.2: a non-string (tampered line) is dropped, never parsed
+  if (!name.startsWith('mcp__')) return name;
+  // 3.3.2: exactly one "__" between server and tool, each made of plain segments joined by single underscores, so a
+  // server named "github__acme-client" can never pass as the allowlisted "github" with the rest smuggled into the tool.
+  const m = /^mcp__([A-Za-z0-9-]+(?:_[A-Za-z0-9-]+)*)__([A-Za-z0-9-]+(?:_[A-Za-z0-9-]+)*)$/.exec(name);
   return m && MCP_SERVER_ALLOWLIST.has(m[1]) ? name : 'mcp__other__other';
 }
 
@@ -242,6 +246,11 @@ export function testCounts(text) {
   return { framework, passed, failed, skipped, ok: failed === 0, durationMs: d ? Math.round(+d[1]) : null };
 }
 
+// v5 (2026-11-12, protocol 3.3.0) adds two content-free fields:
+//   ext     the lowercased EXTENSION of the file an Edit/Write/MultiEdit/NotebookEdit call touched (e.g. ".md"),
+//           never the file name or path; lets a reader tell code edits from documentation edits
+//   PreToolUse records (tool name + tool_use_id only) are written when the installer registers PreToolUse, which it
+//           does only for AskUserQuestion|ExitPlanMode, so an owner question or plan approval is seen when it OPENS
 // v4 (2026-11-10) adds chain awareness for Bash/PowerShell results, still content-free:
 //   segs    redacted signatures of every segment of a chained command (&& || ; | newline, outside quotes), only when
 //           there is more than one (max 8); sig keeps meaning "signature of the first segment"
@@ -256,13 +265,25 @@ export function testCounts(text) {
 //   PostModelSwitch    from/to model ids; SessionStart carries the model id when Claude Code provides it
 //   effort             the session's effort level when present (a word such as "high")
 //   PostToolUseFailure is_interrupt → interrupted: true
+// v5: edit tools whose target file extension is recorded (extension only).
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+export function extOf(p) {
+  if (typeof p !== 'string') return undefined;
+  const base = p.replace(/^.*[\\/]/, '');                 // file name only, then only its extension is kept
+  const m = base.match(/\.([A-Za-z0-9]{1,7})$/);
+  if (!m || m.index === 0) return undefined;                 // ".gitignore"-style names have no extension
+  const e = '.' + m[1].toLowerCase();
+  return KNOWN_EXTS.has(e) ? e : '.other';                  // an unusual suffix could be free text (notes.alice): never written
+}
+// Extensions written as-is; anything else is recorded as ".other" (a code change for the stale-test rule).
+export const KNOWN_EXTS = new Set(['.md', '.mdx', '.txt', '.rst', '.adoc', '.markdown', '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.mts', '.cts', '.json', '.jsonc', '.yaml', '.yml', '.toml', '.ini', '.xml', '.html', '.htm', '.css', '.scss', '.sass', '.less', '.svg', '.py', '.rb', '.go', '.rs', '.java', '.kt', '.kts', '.swift', '.c', '.h', '.cc', '.cpp', '.hpp', '.cs', '.fs', '.php', '.lua', '.dart', '.gd', '.tscn', '.tres', '.sh', '.ps1', '.psm1', '.bat', '.cmd', '.sql', '.prisma', '.graphql', '.vue', '.svelte', '.astro', '.ipynb', '.csv', '.env', '.lock', '.gradle', '.properties', '.plist', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico']);
 const API_ERRORS = new Set(['rate_limit', 'overloaded', 'authentication_failed', 'oauth_org_not_allowed', 'account_on_hold', 'billing_error', 'invalid_request', 'model_not_found', 'server_error', 'max_output_tokens', 'cloud_credential_error', 'unknown']);
 const WORD = /^[A-Za-z0-9][A-Za-z0-9._:\[\]-]{0,63}$/; // model ids, effort words, notification types: nothing else passes
 const word = (v) => (typeof v === 'string' && WORD.test(v) ? v : typeof v === 'object' && v && typeof v.id === 'string' && WORD.test(v.id) ? v.id : undefined);
 
 // Pure: hook input → the record that gets written. Exported so the test can check it never carries content.
 export function recordFor(ev, name, t0) {
-  const out = { ts: new Date(t0).toISOString(), ev: name, sid: ev.session_id, v: 4 };
+  const out = { ts: new Date(t0).toISOString(), ev: name, sid: ev.session_id, v: 5 };
   if (ev.prompt_id) out.pid = ev.prompt_id;
   if (ev.cwd) out.proj = basename(ev.cwd);                 // project folder name only
   if (ev.agent_id) out.agent = ev.agent_id;                // present inside subagent runs
@@ -286,6 +307,7 @@ export function recordFor(ev, name, t0) {
     case 'PostToolUseFailure': {
       out.tool = mcpTool(ev.tool_name); out.tuid = ev.tool_use_id;
       if (ev.duration_ms != null) out.durMs = ev.duration_ms;
+      if (EDIT_TOOLS.has(ev.tool_name) && ev.tool_input) { const e = extOf(ev.tool_input.file_path ?? ev.tool_input.notebook_path); if (e) out.ext = e; }
       if (ev.tool_name === 'Agent' && ev.tool_input) { out.subType = ev.tool_input.subagent_type; out.subModel = ev.tool_input.model; }
       if (name === 'PostToolUseFailure') { out.failed = true; if (ev.is_interrupt === true) out.interrupted = true; }
       if ((ev.tool_name === 'Bash' || ev.tool_name === 'PowerShell') && ev.tool_input) {
