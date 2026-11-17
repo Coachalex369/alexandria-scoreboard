@@ -168,7 +168,7 @@ export class Board {
         s.end = e.ts; s.endReason = e.payload?.reason || null;
         this.sig(t, { ts: e.ts, type: "turn.close", basis: "observed" });
         const reason = e.payload?.reason || "unknown";
-        if (t) this.raise(e, "termination", `session ended (${reason}) with a period open`, s, QUIET_END_REASONS.has(reason));
+        if (t) this.raise(e, "termination", `session ended (${reason}) with a turn open`, s, QUIET_END_REASONS.has(reason));
         this.closeAttention(s, () => true, e.ts, "session ended");
         if (t && t.basis !== "observed") this.finishTask(s, t, e.ts, "session-end");
         this.record(s, e, `session end · ${reason}`);
@@ -231,7 +231,7 @@ export class Board {
         if (!s.explicitMarks) { const nt = this.newTask(s, { id: `turn_${e.id}`, start: e.ts, basis: "inferred", promptLen: e.payload?.promptLen ?? null }); nt.predictionAtStart = this.predict(nt, ms); }
         const cur = s.current && !s.current.end ? s.current : null;
         if (cur) { cur.turns++; cur.promptLen = e.payload?.promptLen ?? cur.promptLen; this.sig(cur, { ts: e.ts, type: "wait.end", basis: "observed" }); this.sig(cur, { ts: e.ts, type: "turn.open", basis: "observed" }); }
-        this.record(s, e, `period ${s.periods} · prompt${e.payload?.promptLen != null ? " · " + e.payload.promptLen + " chars" : ""}`);
+        this.record(s, e, `turn ${s.periods} · prompt${e.payload?.promptLen != null ? " · " + e.payload.promptLen + " chars" : ""}`);
         break;
       }
       case "turn.stop":
@@ -240,9 +240,9 @@ export class Board {
         this.closeAttention(s, (a) => a.key === "approval", e.ts, "turn ended");
         if (t) {
           t.lastStop = e.ts; this.sig(t, { ts: e.ts, type: "turn.close", basis: e.provenance?.observed === false ? "inferred" : "observed" });
-          if (t.edits > 0 || t.commits > 0) this.scoreWin(s, { key: `turn:${s.id}:${t.id}`, kind: "turn", ts: e.ts, observedDeliverable: false, label: `period ${t.period || s.periods} · ${t.edits} file change${t.edits === 1 ? "" : "s"}${t.commits ? ` · ${t.commits} commit${t.commits === 1 ? "" : "s"}` : ""}`, basis: "inferred" });
+          if (t.edits > 0 || t.commits > 0) this.scoreWin(s, { key: `turn:${s.id}:${t.id}`, kind: "turn", ts: e.ts, observedDeliverable: false, label: `turn ${t.period || s.periods} · ${t.edits} file change${t.edits === 1 ? "" : "s"}${t.commits ? ` · ${t.commits} commit${t.commits === 1 ? "" : "s"}` : ""}`, basis: "inferred" });
           if (t.basis !== "observed") this.finishTask(s, t, e.ts, "turn-end");
-          this.raise(e, "turn", "turn complete · back to the owner", s, true);
+          this.raise(e, "turn", "turn ended · your move", s, true);
         }
         break;
       case "api.error": {
@@ -386,7 +386,7 @@ export class Board {
     const ambiguous = failed && kinds.test && kinds.build;
     if (kinds.test && failed && !interrupted && !ambiguous) this.scoring.checkRun(scope, { key: kinds.test, label: kinds.test, kind: "test", ok: false, ts: e.ts, ...who });
     if (kinds.build && !interrupted && !ambiguous) this.scoring.checkRun(scope, { key: kinds.build, label: kinds.build, kind: "build", ok: !failed, ts: e.ts, ...who });
-    if (ambiguous && !interrupted) this.record(s, e, `chained checks failed · ${kinds.build} / ${kinds.test} · which one is not observable (no foul)`);
+    if (ambiguous && !interrupted) this.record(s, e, `chained checks failed · ${kinds.build} / ${kinds.test} · which one is not observable (no issue raised)`);
 
     // Subagent delivery through the Agent tool's result.
     if (tool === "Agent" && !sub) {
@@ -428,7 +428,7 @@ export class Board {
   }
   scoreWin(s, w) {
     const win = this.scoring.win(s, { ...w, scopeKey: this.scopeKey(s) });
-    if (win) { this.raise({ ts: w.ts }, "win", `${win.tier === "probable" ? "probable " : ""}win · ${win.label}`, s, true); this.record(s, { ts: w.ts, kind: "win" }, `WIN (${win.tier}) · ${win.label}`); }
+    if (win) { this.raise({ ts: w.ts }, "win", `${win.tier === "probable" ? "likely " : ""}step done · ${win.label}`, s, true); this.record(s, { ts: w.ts, kind: "win" }, `step done (${win.tier === "probable" ? "likely" : win.tier === "unverified" ? "unchecked" : "confirmed"}) · ${win.label}`); }
     return win;
   }
 
@@ -498,8 +498,8 @@ export class Board {
   // Time LEFT only. The countdown runs on active time, so it stops whenever the stopwatch is not active (approval,
   // question, rate limit, API error, external wait, declared pause, or a stall) and resumes with the work.
   gameClock(t, live, nowMs, alive = true) {
-    if (!t) return { mode: "unknown", basis: "unavailable", note: "no period" };
-    if (!live) return { mode: "final", basis: "observed", remainingMs: 0, adjustments: t.adjustments?.length || 0, note: "period over" };
+    if (!t) return { mode: "unknown", basis: "unavailable", note: "no turn" };
+    if (!live) return { mode: "final", basis: "observed", remainingMs: 0, adjustments: t.adjustments?.length || 0, note: "turn over" };
     const sw = t.sw.totals(nowMs);
     const active = sw.activeMs;
     // Active time can change retroactively: a tool that ran silently past the stall limit turns that "unknown" time
@@ -579,7 +579,7 @@ export class Board {
 
   shotClock(s, nowMs) {
     const running = [...s.agents.values()].filter((a) => { const st = agentState(a, nowMs, this.opts, s); return st === "active" || st === "running"; });
-    if (!running.length) return { mode: "unknown", basis: "unavailable", note: "no subagent running", agentId: null };
+    if (!running.length) return { mode: "unknown", basis: "unavailable", note: "no helper running", agentId: null };
     const ests = running.map((a) => ({ a, est: this.agentEstimate(a, nowMs) }));
     const rank = (x) => x.est.mode === "countdown" || x.est.mode === "overtime" ? x.est.remainingMs : x.est.mode === "range" ? x.est.p50 : Infinity;
     ests.sort((x, y) => rank(x) - rank(y) || (x.a.start || "").localeCompare(y.a.start || ""));
@@ -627,11 +627,11 @@ export class Board {
     return {
       session: { id: s.id, project: s.project, label: lab.text, labelSource: lab.source, repo: s.identity.repo || s.identity.regRepo || null, branch: s.identity.branch || null, scope, status, synthetic: s.synthetic, start: s.start, end: s.end, endReason: s.endReason, processGone: s.processGone, lastEventTs: s.lastEventTs, tasks: s.tasks.length, periods: s.periods },
       task: t ? { id: t.id, title: t.title, basis: t.basis, kind: t.kind, resumed: t.resumed, start: t.start, end: t.end, endReason: t.endReason || null, outcome: t.outcome || null, live, turns: t.turns, toolCalls: t.toolCalls, mainCalls: t.mainCalls, edits: t.edits, codeEdits: t.codeEdits, estimate, agents: t.agents.length, completedAgents: t.completedAgents } : null,
-      wins: field(wins.total, wins.total ? (wins.probable === wins.total ? "inferred" : "observed") : "observed", `${wins.sure} verified/confirmed · ${wins.unverified} unverified · ${wins.probable} probable`),
+      wins: field(wins.total, wins.total ? (wins.probable === wins.total ? "inferred" : "observed") : "observed", `${wins.sure} confirmed · ${wins.unverified} unchecked · ${wins.probable} likely`),
       winDetail: { ...wins, list: s.wins.slice(-30).reverse() },
       // HOME shows the team's wins; GUEST the declared remaining scope (question marks when there is none).
-      home: field(wins.total, "observed", "wins · team score of this session"),
-      guest: estimate?.calls != null ? field(Math.max(0, estimate.calls - (t?.toolCalls || 0)), "predicted", `declared estimate of ${estimate.calls} calls`) : field(null, "unavailable", "scope unknown · no declared estimate"),
+      home: field(wins.total, "observed", "steps done in this session"),
+      guest: estimate?.calls != null ? field(Math.max(0, estimate.calls - (t?.toolCalls || 0)), "predicted", `declared estimate of ${estimate.calls} calls`) : field(null, "unavailable", "no size declared"),
       period: s.periods ? field(s.periods, "observed", t?.resumed && live ? "turn in this session · resumed without a prompt" : "turn in this session") : field(null, "unavailable", "no turn yet"),
       phase: field(phase.word, phase.basis, phase.note),
       game,
@@ -657,7 +657,7 @@ export class Board {
       idle: s.idle ? { since: s.idle, forMs: Math.max(0, nowMs - Date.parse(s.idle)) } : null,
       waiting: attention.length ? { kind: attention[0].kind, since: attention[0].since, forMs: Math.max(0, nowMs - Date.parse(attention[0].since)), basis: attention[0].basis } : swWaiting,
       main: { state: mainState, model: s.model },
-      player: field(running.length, "observed", `${running.length} subagent${running.length === 1 ? "" : "s"} running · main ${mainState}`),
+      player: field(running.length, "observed", `${running.length} helper${running.length === 1 ? "" : "s"} running · main ${mainState}`),
       possession: lastActor?.side || null,
       lastActor,
       agents,
@@ -746,7 +746,7 @@ export function sessionStatus(s, nowMs, { idleMs, staleSessionMs }) {
 
 // Phase word from recent operations (inferred). Facts override it: no period → IDLE, period over → DONE.
 export function phaseOf(s, t, status, nowMs) {
-  if (!t) return { word: "IDLE", basis: "observed", note: "no period" };
+  if (!t) return { word: "IDLE", basis: "observed", note: "no turn" };
   if (t.end) return { word: "DONE", basis: t.basis === "observed" ? "observed" : "inferred", note: t.basis === "observed" ? "task.end mark" : "turn ended" };
   if (status === "idle" || status === "stale") return { word: "IDLE", basis: "observed", note: `no events for ${Math.round((nowMs - Date.parse(s.lastEventTs)) / 1000)} s` };
   const ops = s.recentOps.slice(-5);

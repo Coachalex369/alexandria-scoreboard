@@ -1,6 +1,6 @@
 {
   "name": "alexandria-scoreboard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Alexandria Scoreboard: a free, local Claude Code companion. Vintage basketball-scoreboard view of live Claude Code sessions and subagents, a stopwatch that excludes waiting time, calibrated ETA ranges, rate-limit and approval alerts, completion sounds, workflow analytics.",
   "author": "Alexandria Ltd",
@@ -25,12 +25,13 @@
     "start": "node packages/scoreboard/server.js",
     "mark": "node tools/sb-mark.js",
     "desktop": "electron .",
-    "dist:win": "node tools/make-icon.js && electron-builder --win --x64",
+    "dist:win": "node tools/make-icon.js && electron-builder --win nsis zip --x64",
     "dist:dir": "electron-builder --win --x64 --dir",
     "dist:zip": "node tools/make-icon.js && electron-builder --win zip --x64",
     "collector:install": "node tools/install-collector-v3.mjs",
-    "dist:arm64": "node tools/make-icon.js && electron-builder --win zip --arm64",
-    "protocol:check": "node --test test/protocol-drift.test.js"
+    "dist:arm64": "node tools/make-icon.js && electron-builder --win nsis zip --arm64",
+    "protocol:check": "node --test test/protocol-drift.test.js",
+    "dist:release": "node tools/make-icon.js && electron-builder --win nsis zip --x64 --arm64"
   },
   "engines": {
     "node": ">=22"
@@ -75,10 +76,17 @@
     "win": {
       "target": [
         {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
           "target": "zip",
           "arch": [
-            "arm64",
-            "x64"
+            "x64",
+            "arm64"
           ]
         }
       ],
@@ -89,10 +97,15 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "allowElevation": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Alexandria Scoreboard",
       "createDesktopShortcut": true,
-      "runAfterFinish": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "Alexandria Scoreboard",
+      "uninstallDisplayName": "Alexandria Scoreboard",
+      "runAfterFinish": true,
+      "artifactName": "Alexandria-Scoreboard-Setup-${version}-${arch}.${ext}",
+      "buildUniversalInstaller": false
     },
     "publish": null
   }

@@ -32,21 +32,59 @@ everything on your machine.
   and a controlled evaluation harness (`tools/sb-eval.js`).
 - **Demo mode.** Two synthetic recordings replay through the same engine, so you can try the board without any data.
 
-## Status: development preview
+## Install on Windows
 
-This is **source available, development-preview software**. There are **no official binaries yet**. Unsigned local
-builds can be blocked by Windows Smart App Control; see [docs/BUILDING_WINDOWS.md](docs/BUILDING_WINDOWS.md).
+Download the installer for your PC from the [Releases page](https://github.com/Coachalex369/alexandria-scoreboard/releases):
 
-- **Development builds** are what you build locally from source. They are unsigned.
-- **Production releases** will be signed and published on the Releases page of this repository.
+- `Alexandria-Scoreboard-Setup-<version>-x64.exe` for most Windows PCs (Intel or AMD).
+- `Alexandria-Scoreboard-Setup-<version>-arm64.exe` for Windows on ARM (for example Snapdragon laptops). To check:
+  **Settings → System → About → System type**.
+- The `…-win-x64.zip` / `…-win-arm64.zip` files are portable copies: extract and run `Alexandria Scoreboard.exe`.
+
+The installer is per-user: no administrator rights, installed under `%LOCALAPPDATA%\Programs`, with a Start menu and a
+desktop shortcut. Uninstall from **Settings → Apps → Installed apps → Alexandria Scoreboard**.
+
+### "Windows protected your PC"
+
+This development-preview release is **not code-signed**, so Windows warns before running it:
+
+1. Your browser may say the file "isn't commonly downloaded": choose **Keep** (in Edge: **…** → **Keep**, then
+   **Show more** → **Keep anyway**).
+2. Running the installer shows **Windows protected your PC** (Microsoft Defender SmartScreen). Click **More info**,
+   check that the app is *Alexandria-Scoreboard-Setup-…*, then click **Run anyway**.
+
+**Smart App Control.** If Smart App Control is turned on (Settings → Privacy & security → Windows Security → App &
+browser control), Windows may block the unsigned installer, and the portable copy, with no "Run anyway" option. In
+that case run the Scoreboard from source (below) or wait for a signed release. We do not recommend turning Smart App
+Control off: on many Windows versions it cannot be turned back on without reinstalling Windows.
+
+### Connect it to Claude Code
+
+The board shows demo mode (**Scoreboard → Demo A / Demo B**) straight away. For live data, install the collector once.
+It needs [Node.js](https://nodejs.org) 22 or newer (the Claude Code hook runs `node`). In PowerShell:
+
+```
+node "$env:LOCALAPPDATA\Programs\Alexandria Scoreboard\resources\app\tools\install-collector-v3.mjs"            # dry run: lists every change
+node "$env:LOCALAPPDATA\Programs\Alexandria Scoreboard\resources\app\tools\install-collector-v3.mjs" --apply    # installs, prints a rollback command
+```
+
+If you chose another folder during setup, use that path instead. The installer prints a rollback stamp; to undo the
+install later (restores your previous Claude Code settings):
+
+```
+node "$env:LOCALAPPDATA\Programs\Alexandria Scoreboard\resources\app\tools\install-collector-v3.mjs" --rollback <stamp>
+```
+
+ New Claude Code sessions are picked
+up automatically. More detail in [The collector](#the-collector) below.
 
 ## Requirements
 
 - Windows 10 or 11, x64 and ARM64 (tested). The browser version runs wherever Node.js runs.
-- Node.js 22 or newer.
+- Node.js 22 or newer: for the collector, and to run from source. The installed app itself does not need it.
 - [Claude Code](https://claude.com/claude-code), for live data. Demo mode works without it.
 
-## Install and run from source
+## Run from source
 
 ```
 npm install

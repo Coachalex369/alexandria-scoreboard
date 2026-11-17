@@ -1,7 +1,7 @@
 # Security policy
 
-Alexandria Scoreboard is a development preview. Security fixes are made on the `main` branch; there are no supported binary
-releases yet.
+Alexandria Scoreboard is a development preview. Security fixes are made on the `main` branch and shipped in the next release.
+Releases are unsigned development previews; only the latest release receives fixes.
 
 ## Reporting a vulnerability
 

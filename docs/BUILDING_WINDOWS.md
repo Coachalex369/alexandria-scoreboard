@@ -1,14 +1,17 @@
 # Building and running on Windows
 
-Alexandria Scoreboard is a development preview. There are no official binaries yet. You can run it from source
+Alexandria Scoreboard is a development preview. Unsigned development-preview installers are published on the
+Releases page (see the README for the SmartScreen and Smart App Control notes). You can also run it from source
 (`npm start` or `npm run desktop`) or build a local package as described here.
 
 ## Development builds versus production releases
 
 - **Development builds** are packages you build yourself from source. They are unsigned. Windows Smart App Control or
   SmartScreen may block unsigned executables on some machines.
-- **Production releases** will be code-signed and published on the project's Releases page. Public binaries should not
-  be distributed unsigned.
+- **Development-preview releases** on the Releases page are built by the project's CI from this repository and are
+  **not code-signed**: Windows warns before running them, and Smart App Control may block them.
+- **Signed releases** are planned; until then, building from source is the alternative on machines that block
+  unsigned apps.
 
 ## Packaging approach
 

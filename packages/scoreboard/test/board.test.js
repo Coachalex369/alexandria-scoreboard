@@ -131,11 +131,11 @@ test("agent.stop delivers a subagent win but never ends the period; turn.stop en
   assert.equal(s.task.live, true); assert.equal(s.agents[0].state, "completed"); assert.equal(s.player.value, 0);
   assert.equal(s.wins.value, 1); assert.equal(s.winDetail.unverified, 1); assert.equal(s.agents[0].wins, 1);
   b.apply(ev(70, "turn.stop"));
-  const a1 = b.takeAlerts(); assert.ok(a1.every((a) => a.kind !== "completed")); assert.ok(a1.some((a) => a.kind === "turn" && a.quiet));
+  const a1 = b.takeAlerts(); assert.ok(a1.every((a) => a.kind !== "completed")); assert.ok(a1.some((a) => a.kind === "turn" && a.quiet)); assert.ok(a1.some((a) => a.kind === "win" && a.text.startsWith("step done · ")), "plain wording: step done"); assert.ok(a1.some((a) => a.kind === "turn" && a.text === "turn ended · your move"));
   assert.equal(b.snapshot("sess-1", now(71)).task.live, false, "the period ended with the turn");
   b.apply(ev(75, "prompt.submit", { actor: { type: "human" }, payload: { promptLen: 40 } }));
   b.apply(ev(80, "session.end", { payload: { reason: "crash" } }));
-  const a2 = b.takeAlerts(); assert.ok(a2.some((a) => a.kind === "termination" && !a.quiet));
+  const a2 = b.takeAlerts(); assert.ok(a2.some((a) => a.kind === "termination" && !a.quiet)); assert.match(a2.find((a) => a.kind === "termination").text, /with a turn open/);
   s = b.snapshot("sess-1", now(90)); assert.equal(s.session.status, "ended");
 });
 

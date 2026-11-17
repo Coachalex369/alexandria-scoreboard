@@ -23,16 +23,16 @@ sessions. It is not a card dashboard.
 
 | Board field | Meaning for AI development | Basis | Dark when |
 |---|---|---|---|
-| **STEPS DONE** (was HOME / WINS) | shared team score of the session (main thread + subagents), every win counted, tiers in the note (`SCORING.md`) | observed / inferred | no session |
-| **STEPS LEFT** (was GUEST) | remaining declared scope = declared estimate − completed calls, floored at 0; while it shows a number it pulses twice (about 1 s) every 30 s, steady when dark and under reduced motion | predicted | no declared estimate ("REMAINING · SCOPE UNKNOWN") |
-| **GAME CLOCK** | Estimated time LEFT in the current period (rules in `SCORING.md`). Counts down in ACTIVE time from the v0.2 stopwatch (`STOPWATCH_ETA_V02.md`), so it stops during owner time, approvals, questions, rate limits, API errors, declared pauses, external waits and stalls (silence inside an open turn beyond 10 min); at 0:00 OVERTIME lights and it re-estimates and counts down again. Time spent is never displayed | predicted | no estimate (`--:--`) |
+| **STEPS DONE** (was HOME / WINS) | completed work in the session (main thread + helpers), every step counted; the note gives the tiers: CONFIRMED (a marked task completed, or a step backed by a valid check), UNCHECKED (done but not backed by a check) and LIKELY (inferred, e.g. a turn that changed files) (`SCORING.md`) | observed / inferred | no session |
+| **STEPS LEFT** (was GUEST) | remaining declared scope = declared estimate − completed calls, floored at 0; while it shows a number it pulses twice (about 1 s) every 30 s, steady when dark and under reduced motion | predicted | no declared estimate (note "NO SIZE DECLARED"; with one, "OF 30 DECLARED") |
+| **GAME CLOCK** | Estimated time LEFT in the current turn (rules in `SCORING.md`). Counts down in ACTIVE time from the v0.2 stopwatch (`STOPWATCH_ETA_V02.md`), so it stops during owner time, approvals, questions, rate limits, API errors, declared pauses, external waits and stalls (silence inside an open turn beyond 10 min); at 0:00 OVERTIME lights and it re-estimates and counts down again. Time spent is never displayed | predicted | no estimate (`--:--`) |
 | **YOUR MOVE** (was SHOT CLOCK) | counts UP from 0:00 only while Claude is blocked on the owner: approval, question / plan approval / input, or the owner's move inside an open marked task. Note: APPROVAL NEEDED · QUESTION · YOUR TURN. Resets and goes dark the moment the owner responds. Same signal as the GAME CLOCK's stop-for-the-owner: one runs exactly when the other is stopped for the owner | observed / inferred | Claude-side waits (rate limit, API error, external, pause, stall), no task open, after the final horn |
 | **TURN** (was PERIOD) | turn number in the session: each owner prompt starts the next turn (`SCORING.md`) | observed | no turn yet |
 | **ISSUES** (was FOULS) | unresolved meaningful problems in the session's repository (`SCORING.md`); **WATCH** lamp (was BONUS) at 5 open | observed / inferred | — |
 | **VERIFIED** | currently valid passing checks in the session's repository; PASS/FAIL lamps show the latest test evidence | observed | no checks |
 | **CHECK-INS** (was TIMEOUTS) | outstanding owner-attention requests (approvals, questions, plan approvals, inputs); NEEDS YOU lamp | observed / inferred | — |
-| **AGENTS** (was PLAYER) | subagents running; the note names the main thread's state | observed | — |
-| **Possession arrows** | MAIN lit when the main thread acted last, AGENTS when a subagent did | observed | no actor |
+| **AGENTS** (was PLAYER) | helpers (subagents) running; the note names the main thread's state ("MAIN ACTIVE · 1 HELPER") | observed | — |
+| **Possession arrows** | MAIN lit when the main thread acted last, AGENTS when a helper did | observed | no actor |
 | **Message line** | `PHASE · ACTOR`; a `?` marks an inferred phase (PLAN / RESEARCH / BUILD / TEST / REVIEW / COMMIT from the last five operations). WAIT, IDLE and DONE are facts | inferred / observed | — |
 | **Lamps** | HRS (clock shows h:mm), RUNNING, TIMEOUT, EST (low-confidence estimate), OVERTIME, IDLE (no events for 90 s; STALE after 30 min) | observed | — |
 
@@ -72,10 +72,11 @@ roster says `synthetic` for models, and the bench status line names the recordin
 | Event | Visual | Sound |
 |---|---|---|
 | permission prompt / AskUserQuestion | amber banner, TIMEOUT + WAITING lamps, clock stops | referee whistle |
-| test run failed | red banner, FAIL lamp, foul | buzzer |
+| test run failed | red banner, FAIL lamp, new issue | buzzer |
 | task complete (`task.end`) | green banner, DONE | gym horn |
 | session ended with a task open (abnormal reason) | red banner | buzzer (quiet for clear/logout/prompt exit) |
-| turn complete | brief blue banner, log | none |
+| step done (confirmed or unchecked) / likely step done (inferred, e.g. a turn that changed files) | brief banner "step done · …" or "likely step done · …", log | none |
+| turn ended | brief blue banner "turn ended · your move", log | none |
 
 `AlertPolicy` suppresses a repeated identical alert for 10 s and spaces sounds at least 2.5 s apart. Alerts raised
 while catching up on history (snapshot, or events older than 60 s) are visible but silent. Sounds come from

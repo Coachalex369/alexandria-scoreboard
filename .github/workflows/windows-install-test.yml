@@ -1,0 +1,106 @@
+name: Windows install test
+
+# Builds the release artifacts and runs a fresh per-user install test on a clean GitHub-hosted Windows VM:
+# silent install -> shortcuts and uninstall entry -> launch + screenshot -> collector installer dry run
+# -> silent uninstall -> app, shortcuts and uninstall entry removed (app data in %APPDATA% is kept by design).
+# Nothing is signed or published here.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["release/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  install-test-x64:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build installers and ZIPs (x64 + ARM64)
+        run: npm run dist:release
+
+      - name: List artifacts
+        shell: pwsh
+        run: Get-ChildItem dist -File | Select-Object Name, Length | Format-Table -AutoSize
+
+      - name: Silent per-user install (x64)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter "Alexandria-Scoreboard-Setup-*-x64.exe" | Select-Object -First 1
+          if (-not $setup) { throw "x64 installer not found" }
+          $p = Start-Process $setup.FullName -ArgumentList "/S" -PassThru -Wait
+          "installer exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "installer failed" }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "Alexandria Scoreboard.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "installed exe not found under $env:LOCALAPPDATA\Programs" }
+          "installed to: $($exe.DirectoryName)"
+          "INSTALL_DIR=$($exe.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Shortcuts and uninstall entry exist
+        shell: pwsh
+        run: |
+          $start = Join-Path ([Environment]::GetFolderPath('Programs')) "Alexandria Scoreboard.lnk"
+          $desk = Join-Path ([Environment]::GetFolderPath('Desktop')) "Alexandria Scoreboard.lnk"
+          "start menu: $(Test-Path $start)  desktop: $(Test-Path $desk)"
+          if (-not (Test-Path $start)) { throw "Start menu shortcut missing" }
+          if (-not (Test-Path $desk)) { throw "desktop shortcut missing" }
+          $u = Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall | Get-ItemProperty | Where-Object { $_.DisplayName -eq "Alexandria Scoreboard" }
+          if (-not $u) { throw "uninstall entry missing" }
+          "uninstall entry: $($u.DisplayName) $($u.DisplayVersion)"
+
+      - name: Launch and screenshot
+        shell: pwsh
+        run: |
+          $png = Join-Path $env:RUNNER_TEMP "scoreboard-x64.png"
+          $p = Start-Process (Join-Path $env:INSTALL_DIR "Alexandria Scoreboard.exe") -ArgumentList "--smoke=$png" -PassThru
+          if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; throw "app did not finish the smoke run within 120 s" }
+          "app exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "app smoke run failed" }
+          if (-not (Test-Path $png)) { throw "no screenshot" }
+          Copy-Item $png dist\
+
+      - name: Collector installer dry run from the installed app (README command)
+        shell: pwsh
+        run: |
+          node (Join-Path $env:INSTALL_DIR "resources\app\tools\install-collector-v3.mjs")
+          if ($LASTEXITCODE -ne 0) { throw "collector installer dry run failed" }
+
+      - name: Silent uninstall and verify removal
+        shell: pwsh
+        run: |
+          $un = Get-ChildItem $env:INSTALL_DIR -Filter "Uninstall*.exe" | Select-Object -First 1
+          if (-not $un) { throw "uninstaller not found" }
+          Start-Process $un.FullName -ArgumentList "/S" -Wait
+          # The NSIS uninstaller re-launches itself from a temp copy: wait for the files to disappear.
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $env:INSTALL_DIR "Alexandria Scoreboard.exe")); $i++) { Start-Sleep 2 }
+          if (Test-Path (Join-Path $env:INSTALL_DIR "Alexandria Scoreboard.exe")) { throw "app still installed after uninstall" }
+          $start = Join-Path ([Environment]::GetFolderPath('Programs')) "Alexandria Scoreboard.lnk"
+          $desk = Join-Path ([Environment]::GetFolderPath('Desktop')) "Alexandria Scoreboard.lnk"
+          if ((Test-Path $start) -or (Test-Path $desk)) { throw "shortcut left behind" }
+          $u = Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall | Get-ItemProperty | Where-Object { $_.DisplayName -eq "Alexandria Scoreboard" }
+          if ($u) { throw "uninstall entry left behind" }
+          "uninstalled cleanly"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alexandria-scoreboard-windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.png
+          retention-days: 14
